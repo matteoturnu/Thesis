@@ -1,0 +1,6 @@
+
+<ul>
+#for $fruit in $list
+    <li>$fruit.name costs $fruit.price</li>
+#end for
+</ul>

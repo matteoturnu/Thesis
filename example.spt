@@ -1,0 +1,6 @@
+<html>
+  <head>
+    <title>Spitfire example</title>
+  </head>
+  <body><p>Hello, $name!</p></body>
+</html>
