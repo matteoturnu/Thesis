@@ -18,13 +18,13 @@ class MyHandler(BaseHTTPRequestHandler):
             if name != "":
                 new_template = "<h1>Welcome, %s</h1>" % name
                 print("Template: ", new_template)
-                with open("templates/welcome.spf", "w") as f:
+                with open("spitfire_templates/welcome.spf", "w") as f:
                     f.write(new_template)
                 env.load_dir()
-                #response = env.render_template("templates\\new_template", opts=[])
-                response = env.render_template("templates\\welcome", opts=[])
+                #response = env.render_template("spitfire_templates\\new_template", opts=[])
+                response = env.render_template("spitfire_templates\\welcome", opts=[])
             else:
-                response = env.render_template("templates\\form", opts=[])
+                response = env.render_template("spitfire_templates\\form", opts=[])
         except Exception as e:
             response = f"<h1>Internal server error</h1><p>{str(e)}</p>"
 
@@ -52,7 +52,8 @@ class MyHandler(BaseHTTPRequestHandler):
             new_template = "<h1>Welcome, %s!</h1>" % name
             new_template += "<p style=\"font-size:20px;\">Your surname is: %s </p>" % surname
             print("Template: ", new_template)
-            with open("templates/new_template.spf", "w") as f:
+            #with open("spitfire_templates/new_template.spf", "w") as f:
+            with open("spitfire_templates/welcome.spf", "w") as f:
                 f.write(new_template)
 
         if params.get("credentials_form"):
@@ -63,13 +64,15 @@ class MyHandler(BaseHTTPRequestHandler):
             new_template = "<h1>Welcome, %s!</h1>" % username
             new_template += "<p style=\"font-size:20px;\">Your email is: %s </p>" % email
             print("Template: ", new_template)
-            with open("templates/new_template.spf", "w") as f:
+            #with open("spitfire_templates/new_template.spf", "w") as f:
+            with open("spitfire_templates/welcome.spf", "w") as f:
                 f.write(new_template)
 
         # Need to keep the server online
         try:
             env.load_dir()
-            response = env.render_template("templates\\new_template", opts=[])
+            #response = env.render_template("spitfire_templates\\new_template", opts=[])
+            response = env.render_template("spitfire_templates\\welcome", opts=[])
         except Exception as e:
             response = f"<h1>Internal server error</h1><p>{str(e)}</p>"
 
@@ -85,8 +88,8 @@ class MyHandler(BaseHTTPRequestHandler):
 # Set up the server
 PORT = 8080
 server_address = ("", PORT)
-env = spitfire.Environment('templates')
-# 'templates' folder becomes the "home" of this Environment
+env = spitfire.Environment('spitfire_templates')
+# 'spitfire_templates' folder becomes the "home" of this Environment
 env.load_dir() # no parameters on load_dir() loads the "home" directory
 
 httpd = HTTPServer(server_address, MyHandler)
