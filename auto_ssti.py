@@ -107,9 +107,7 @@ def validate_injection(op_res, html_resp):
 
 
 async def main():
-    #url = "http://127.0.0.1:8080"
-    # for Plates engine
-    url = "http://127.0.0.1:8080/server.php"
+    url = "http://127.0.0.1:8080"
     # only starting tags for now
     # for python and php template engines
     # maybe, if the simple (7*7) doesn't work, as in  Spitfire case, try with int() and other functions
