@@ -19,9 +19,12 @@
             /*$new_template = "<h1>User Profile</h1>
                             <p>Hello, <?php echo \$user ?></p>";*/
 
-            $new_template = "<h1>User Profile</h1>
+            /*$new_template = "<h1>User Profile</h1>
                             <p>Hello, <?php echo \"${name}\" ?></p>
-                            <p>Your surname is: <?php echo \"${surname}\" ?></p>";
+                            <p>Your surname is: <?php echo \"${surname}\" ?></p>";*/
+            $new_template = "<h1>User Profile</h1>
+                            <p>Hello, $name </p>
+                            <p>Your surname is: $surname ?></p>";
 
         }
         else if ($_POST["credentials_form"]) {
@@ -29,8 +32,8 @@
             $email = $_POST["email"];
 
             $new_template = "<h1>User Profile</h1>
-                            <p>Hello, <?php echo \"${user}\" ?></p>
-                            <p>Your email is: <?php echo \"${email}\" ?></p>";
+                            <p>Hello, $user </p>
+                            <p>Your email is: $email ?></p>";
         }
 
         # create a file with the template
