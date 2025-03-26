@@ -1,7 +1,8 @@
+import os.path
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
+import subprocess, sys
 import spitfire
-from spitfire.compiler.util import load_template
 
 
 
@@ -22,9 +23,9 @@ class MyHandler(BaseHTTPRequestHandler):
                     f.write(new_template)
                 env.load_dir()
                 #response = env.render_template("spitfire_templates\\new_template", opts=[])
-                response = env.render_template("spitfire_templates\\welcome", opts=[])
+                response = env.render_template(TEMPLATE_DIR+"\\welcome", opts=[])
             else:
-                response = env.render_template("spitfire_templates\\form", opts=[])
+                response = env.render_template(TEMPLATE_DIR+"\\form", opts=[])
         except Exception as e:
             response = f"<h1>Internal server error</h1><p>{str(e)}</p>"
 
@@ -32,6 +33,7 @@ class MyHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-type", "text/html")
         self.end_headers()
+
 
         # Send the rendered HTML
         self.wfile.write(response.encode("utf-8"))
@@ -72,7 +74,7 @@ class MyHandler(BaseHTTPRequestHandler):
         try:
             env.load_dir()
             #response = env.render_template("spitfire_templates\\new_template", opts=[])
-            response = env.render_template("spitfire_templates\\welcome", opts=[])
+            response = env.render_template(TEMPLATE_DIR+"\\welcome", opts=[])
         except Exception as e:
             response = f"<h1>Internal server error</h1><p>{str(e)}</p>"
 
@@ -85,13 +87,18 @@ class MyHandler(BaseHTTPRequestHandler):
         self.wfile.write(response.encode("utf-8"))
 
 
+
+
+TEMPLATE_DIR = os.path.abspath("spitfire_templates")
+print(TEMPLATE_DIR)
 # Set up the server
 PORT = 8080
 server_address = ("", PORT)
-env = spitfire.Environment('spitfire_templates')
+#env = spitfire.Environment('spitfire_templates')
+
+env = spitfire.Environment(TEMPLATE_DIR)
 # 'spitfire_templates' folder becomes the "home" of this Environment
 env.load_dir() # no parameters on load_dir() loads the "home" directory
-
 httpd = HTTPServer(server_address, MyHandler)
 
 print(f"Serving on http://127.0.0.1:{PORT}")

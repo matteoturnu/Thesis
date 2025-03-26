@@ -1,9 +1,61 @@
 import asyncio
 import re
 import random
+import sys
+import threading
+
+import aiohttp
 from pyppeteer import launch
 from te_symbols import te_symbols
-from decimal import Decimal
+import subprocess, time, socket
+import spitfire
+import os
+
+print(dir(spitfire))
+print(sys.executable)
+
+
+def read_output(stream, prefix):
+    """Reads output from a stream and prints it with a prefix."""
+    while True:
+        line = stream.readline()
+        if not line:
+            break
+        #print(f"[{prefix}] {line.strip()}")
+
+
+def launch_servers():
+    # set the correct working directory when launching the subprocess of spitfire_server.py
+    server_directory = os.path.dirname(os.path.abspath("spitfire_tempeng/spitfire_server.py"))
+    print(server_directory)
+
+    spitfire_process = subprocess.Popen(
+        [sys.executable, "-u", "spitfire_server.py"],  # `-u` ensures unbuffered output
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        cwd=server_directory
+    )
+
+    # Start separate threads for stdout and stderr
+    threading.Thread(target=read_output, args=(spitfire_process.stdout, "Spitfire"), daemon=True).start()
+    threading.Thread(target=read_output, args=(spitfire_process.stderr, "Spitfire-ERROR"), daemon=True).start()
+
+    return spitfire_process
+
+
+async def check_server_ready(url):
+    # Wait for the server to be available
+    async with aiohttp.ClientSession() as session:
+        while True:
+            try:
+                # wait for a POST request handled correctly
+                async with session.post(url, data={"test": "value"}) as response:
+                    if response.status == 200:
+                        print(f"Server is up at {url}")
+                        return True
+            except:
+                pass
+            print("Waiting for server to be ready...")
+            await asyncio.sleep(1)  # Check every second
 
 
 def generate_numbers_for_product():
@@ -19,24 +71,11 @@ def generate_numbers_for_product():
         if lower_bound <= product < upper_bound:
             return num1, num2, product
 
-
 def create_payload(symbols):
     # generate random numbers for the payload product
-    #
-    min_digits = 5
-    max_digits = 8
-    """
-    num_1 = generate_number(min_digits, max_digits)
-    num_2 = generate_number(min_digits, max_digits)
-    """
     num_1, num_2, _ = generate_numbers_for_product()
 
     operation = f"{num_1}*{num_2}"
-    # in a real scenario, we use values directly instead of variables like num_1 and num_2
-    # like this: operation = "int(2*2)"
-    # print(f"Numbers: {num_1}, {num_2}; result: {eval(operation)}")
-
-    # find another placeholder or something more specific on Python
 
     if " " in symbols:
         # replace the space with the actual operation
@@ -46,7 +85,6 @@ def create_payload(symbols):
         payload = symbols + operation
     # in the future, return only the payload
     return payload, operation
-
 
 async def exec_payload(form, payload):
     # find the input text areas
@@ -65,8 +103,6 @@ async def scraper(page, url, payload):
     await page.goto(url)
     # search for all the existing forms in the page first
     forms_lst = await page.querySelectorAll("form")
-    # print(f"{len(forms_lst)} form(s) found.")
-
     html_resp = ""
     for form_idx in range(len(forms_lst)):
         curr_form = forms_lst[form_idx]
@@ -75,8 +111,6 @@ async def scraper(page, url, payload):
 
             # be careful for real web sites: check if the context changes
             await page.waitForNavigation()
-
-            # await page.waitFor(2000)
             html_resp += await page.content()
             # go back to previous page and look for other forms
             await page.goBack()
@@ -84,7 +118,6 @@ async def scraper(page, url, payload):
             forms_lst = await page.querySelectorAll("form")
         except Exception as e:
             print(e)
-
     return html_resp
 
 
@@ -93,10 +126,10 @@ def validate_injection(op_res, html_resp):
     responses_lst = list()
     res_matches = None
     # match number in scientific notation
+    """
     sn_values = re.findall(r"\d*\.\d+E\+\d+", html_resp)
 
     # when value exceeds the 18 digits, PHP uses scientific notation
-    """
     if sn_values:
         for sn_v in sn_values:
             base, exponent = sn_v.split("E")
@@ -120,9 +153,7 @@ def validate_injection(op_res, html_resp):
             start, end = max(0, match.start() - 20), min(len(html_resp), match.end() + 20)
             responses_lst.append(html_resp[start:end])
 
-
     return success, responses_lst
-
 
 def find_template_engines(success_symbols):
     target_engines = {}
@@ -142,6 +173,7 @@ def find_template_engines(success_symbols):
 
 async def main():
     url = "http://127.0.0.1:8080"
+    await check_server_ready(url)
 
     # it's better to use a dictionary, containing also the programming language AND the specific template engine
     # symbols_lst = ["$", "#", "< >", "{ }", "{{ }}", "<? ?>", "<?= ?>", "{{= }}", "{% %}", "${ }", "@! !@", "#{ }", "$int( )"]
@@ -153,6 +185,7 @@ async def main():
     print("\n-----------------------")
     print("--- DETECTION PHASE ---")
     print("-----------------------")
+
     success_symbols = []
     success_payloads = []
     for symbols in te_symbols:
@@ -160,11 +193,8 @@ async def main():
         print(f"\nTrying symbols '{symbols}' with payload '{payload}'...")
 
         response = await scraper(page, url, payload)
-        # print(response)
 
         result = str(eval(operation))
-        # print("Operation result: ", result)
-
         success, resp_matches = validate_injection(result, response)
         if success:
             # e.g. avoid to add "{{ }}" if the list already contains successful symbols "{ }"
@@ -197,11 +227,12 @@ async def main():
         print("\nSome successful payloads have been found:\n", success_payloads)
         print(f"Target template engine(s): ")
         te_dct = find_template_engines(success_symbols)
-        [print(f"--> {te}({te_dct[te]})") for te in te_dct]
+        [print(f"--> {te} ({te_dct[te]})") for te in te_dct]
 
     else:
         print("No successful payload has been found.")
 
 
 if __name__ == "__main__":
+    launch_servers()   # only needed to automatically launch servers from here
     asyncio.run(main())
