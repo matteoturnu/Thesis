@@ -11,9 +11,6 @@ import subprocess, time, socket
 import spitfire
 import os
 
-print(dir(spitfire))
-print(sys.executable)
-
 
 def read_output(stream, prefix):
     """Reads output from a stream and prints it with a prefix."""
@@ -21,25 +18,35 @@ def read_output(stream, prefix):
         line = stream.readline()
         if not line:
             break
-        #print(f"[{prefix}] {line.strip()}")
+        # print(f"[{prefix}] {line.strip()}")
 
 
-def launch_servers():
+def launch_server(server_relpath):
     # set the correct working directory when launching the subprocess of spitfire_server.py
-    server_directory = os.path.dirname(os.path.abspath("spitfire_tempeng/spitfire_server.py"))
+    # server_directory = os.path.dirname(os.path.abspath("spitfire_tempeng/spitfire_server.py"))
+
+    server_directory = os.path.dirname(os.path.abspath(server_relpath))
     print(server_directory)
 
-    spitfire_process = subprocess.Popen(
-        [sys.executable, "-u", "spitfire_server.py"],  # `-u` ensures unbuffered output
+    server_file = server_relpath.split("/")[1]
+
+    if server_relpath.split(".")[1] == "php":
+        args = ["php", "-S", "127.0.0.1:8080", server_file]
+    else:
+        # we suppose it's Python then
+        args = [sys.executable, "-u", server_file]  # `-u` ensures unbuffered output
+
+    server_process = subprocess.Popen(
+        args=args,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
         cwd=server_directory
     )
 
     # Start separate threads for stdout and stderr
-    threading.Thread(target=read_output, args=(spitfire_process.stdout, "Spitfire"), daemon=True).start()
-    threading.Thread(target=read_output, args=(spitfire_process.stderr, "Spitfire-ERROR"), daemon=True).start()
+    threading.Thread(target=read_output, args=(server_process.stdout, server_file), daemon=True).start()
+    threading.Thread(target=read_output, args=(server_process.stderr, server_file + "-ERROR"), daemon=True).start()
 
-    return spitfire_process
+    return server_process
 
 
 async def check_server_ready(url):
@@ -71,6 +78,7 @@ def generate_numbers_for_product():
         if lower_bound <= product < upper_bound:
             return num1, num2, product
 
+
 def create_payload(symbols):
     # generate random numbers for the payload product
     num_1, num_2, _ = generate_numbers_for_product()
@@ -85,6 +93,7 @@ def create_payload(symbols):
         payload = symbols + operation
     # in the future, return only the payload
     return payload, operation
+
 
 async def exec_payload(form, payload):
     # find the input text areas
@@ -154,6 +163,7 @@ def validate_injection(op_res, html_resp):
             responses_lst.append(html_resp[start:end])
 
     return success, responses_lst
+
 
 def find_template_engines(success_symbols):
     target_engines = {}
@@ -234,5 +244,27 @@ async def main():
 
 
 if __name__ == "__main__":
-    launch_servers()   # only needed to automatically launch servers from here
-    asyncio.run(main())
+    ### USE THIS PIECE OF CODE IF YOU ONLY EXECUTE auto_ssti.py ###
+
+    servers_lst = ["latte_tempeng/latte_server.php", "spitfire_tempeng/spitfire_server.py",
+                   "plates_tempeng/plates_server.php"]
+    # allow the user to stop execution before studying new server
+
+    for server in servers_lst:
+        choice = ""
+        server_process = launch_server(server)  # only needed to automatically launch servers from here
+        asyncio.run(main())
+        server_process.terminate()
+        server_process.wait()
+
+        if server != servers_lst[-1]:
+            while choice not in ["Y", "N"]:
+                choice = input("\nWould you like to go on with the next server? (Y[Yes]/N[No]) ").upper()
+
+        if choice == "N":
+            break
+
+##### EXECUTING spitfire_server.py FIRST AND THEN auto_ssti.py
+"""
+asyncio.run(main())
+"""
