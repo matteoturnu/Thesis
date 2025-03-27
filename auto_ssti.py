@@ -165,6 +165,29 @@ def validate_injection(op_res, html_resp):
     return success, responses_lst
 
 
+def store_symbols(symbols_lst, payloads_lst, new_symbols, new_payload):
+
+    # e.g. avoid to add "{{ }}" if the list already contains successful symbols "{ }"
+    symbols_are_contained = False
+    for success_symbols in symbols_lst:
+        if success_symbols in new_symbols:
+            symbols_are_contained = True
+            break
+        elif new_symbols in success_symbols:
+            # e.g. success_symbols = ["{{ }}"] and curr_symbols = "{ }"
+            # replace with the simplest form
+            symbols_are_contained = True
+            idx_success_symbols = symbols_lst.index(success_symbols)
+            symbols_lst[idx_success_symbols] = new_symbols
+            payloads_lst[idx_success_symbols] = new_payload
+
+    # if the list is still empty or the same symbols have been found in the non-empty list
+    if not symbols_lst or not symbols_are_contained:
+        symbols_lst.append(new_symbols)
+        payloads_lst.append(new_payload)
+
+
+
 def find_template_engines(success_symbols):
     target_engines = {}
     engines_by_symbols = []
@@ -183,10 +206,8 @@ def find_template_engines(success_symbols):
 
 async def main():
     url = "http://127.0.0.1:8080"
+    # wait until the server is ready to send responses
     await check_server_ready(url)
-
-    # it's better to use a dictionary, containing also the programming language AND the specific template engine
-    # symbols_lst = ["$", "#", "< >", "{ }", "{{ }}", "<? ?>", "<?= ?>", "{{= }}", "{% %}", "${ }", "@! !@", "#{ }", "$int( )"]
 
     # launch browser without GUI
     browser = await launch({"headless": True})
@@ -196,31 +217,19 @@ async def main():
     print("--- DETECTION PHASE ---")
     print("-----------------------")
 
-    success_symbols = []
-    success_payloads = []
-    for symbols in te_symbols:
-        payload, operation = create_payload(symbols)
-        print(f"\nTrying symbols '{symbols}' with payload '{payload}'...")
+    success_symbols_lst = []
+    success_payloads_lst = []
+
+    for curr_symbols in te_symbols:
+        payload, operation = create_payload(curr_symbols)
+        print(f"\nTrying symbols '{curr_symbols}' with payload '{payload}'...")
 
         response = await scraper(page, url, payload)
-
         result = str(eval(operation))
         success, resp_matches = validate_injection(result, response)
         if success:
-            # e.g. avoid to add "{{ }}" if the list already contains successful symbols "{ }"
-            symbols_are_contained = False
-            for element in success_symbols:
-                # NOTE: you need to handle the opposite scenario as well!
-                # e.g. success_symbols = ["{{ }}"] and symbols = "{ }"
-                # you need to replace in the list
-                if element in symbols:
-                    symbols_are_contained = True
-                    break
-
-            # if the list is still empty or the same symbols have been found in the non-empty list
-            if not success_symbols or not symbols_are_contained:
-                success_symbols.append(symbols)
-                success_payloads.append(payload)
+            # check if current symbols have to be added or not
+            store_symbols(success_symbols_lst, success_payloads_lst, curr_symbols, payload)
 
             print("Successful injection!")
             for match in resp_matches:
@@ -233,14 +242,15 @@ async def main():
     print("\n-----------------------")
     print("------- RESULTS -------")
     print("-----------------------")
-    if success_payloads:
-        print("\nSome successful payloads have been found:\n", success_payloads)
+    if success_payloads_lst:
+        print("\nSome successful payloads have been found:\n", success_payloads_lst)
         print(f"Target template engine(s): ")
-        te_dct = find_template_engines(success_symbols)
+        te_dct = find_template_engines(success_symbols_lst)
         [print(f"--> {te} ({te_dct[te]})") for te in te_dct]
 
     else:
         print("No successful payload has been found.")
+
 
 
 if __name__ == "__main__":
@@ -248,7 +258,6 @@ if __name__ == "__main__":
 
     servers_lst = ["latte_tempeng/latte_server.php", "spitfire_tempeng/spitfire_server.py",
                    "plates_tempeng/plates_server.php"]
-    # allow the user to stop execution before studying new server
 
     for server in servers_lst:
         choice = ""
@@ -257,6 +266,7 @@ if __name__ == "__main__":
         server_process.terminate()
         server_process.wait()
 
+        # allow the user to stop execution before studying new server
         if server != servers_lst[-1]:
             while choice not in ["Y", "N"]:
                 choice = input("\nWould you like to go on with the next server? (Y[Yes]/N[No]) ").upper()
