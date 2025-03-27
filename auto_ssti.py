@@ -135,26 +135,6 @@ def validate_injection(op_res, html_resp):
     responses_lst = list()
     res_matches = None
     # match number in scientific notation
-    """
-    sn_values = re.findall(r"\d*\.\d+E\+\d+", html_resp)
-
-    # when value exceeds the 18 digits, PHP uses scientific notation
-    if sn_values:
-        for sn_v in sn_values:
-            base, exponent = sn_v.split("E")
-            decimal_places = len(base.split(".")[1])
-
-            # format Python value using the number of decimal digits from the PHP number
-            sn_op_res = f"{Decimal(op_res):.{decimal_places}E}"
-            #print(f"Formatted Python: {sn_op_res}; PHP: {sn_v}")
-            if sn_op_res == sn_v:
-                success = True
-                match_idx = html_resp.index(sn_v)
-                start, end = max(0, match_idx - 20), min(len(html_resp), match_idx + 20)
-                responses_lst.append(html_resp[start:end])
-
-    else:
-    """
     res_matches = list(re.finditer(op_res, html_resp))
     if res_matches:
         success = True
@@ -166,7 +146,6 @@ def validate_injection(op_res, html_resp):
 
 
 def store_symbols(symbols_lst, payloads_lst, new_symbols, new_payload):
-
     # e.g. avoid to add "{{ }}" if the list already contains successful symbols "{ }"
     symbols_are_contained = False
     for success_symbols in symbols_lst:
@@ -208,7 +187,6 @@ async def main():
     url = "http://127.0.0.1:8080"
     # wait until the server is ready to send responses
     await check_server_ready(url)
-
     # launch browser without GUI
     browser = await launch({"headless": True})
     page = await browser.newPage()
