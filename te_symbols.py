@@ -12,12 +12,35 @@ te_symbols = {
 
                     "#": {
                         "Cheetah": "Python",
-                        "Velocity": "Java"
+                        "Velocity": "Java",
+                        "Handlebars": "JavaScript"
+                    },
+
+                    "@": {
+                        "SquirrellyJS": "JavaScript",
+                    },
+
+                    "|": {
+                        "SquirrellyJS": "JavaScript",
+                    },
+
+                    "=": {
+                        "Slim": "Ruby"
+                    },
+
+                    "( )": {
+                        "Razor": ".NET"
                     },
 
                     "{ }": {
                         "Smarty": "PHP",
-                        "Latte": "PHP"
+                        "Latte": "PHP",
+                        "Dust": "JavaScript",
+                        "Razor": ".NET"
+                    },
+
+                    "{@ }": {
+                        "Dust": "JavaScript"
                     },
 
                     "{= }": {
@@ -27,15 +50,18 @@ te_symbols = {
                     "${ }": {
                         "Chameleon": "Python",
                         "Thymeleaf": "Java",
-                        "FreeMarker": "Java"
+                        "FreeMarker": "Java",
+                        "Marko": "JavaScript"
                     },
 
                     "#{ }": {
-                        "Thymeleaf": "Java"
+                        "Thymeleaf": "Java",
+                        "Pug and Jade": "JavaScript"
                     },
 
                     "{{= }}": {
-                        "web2py": "Python"
+                        "web2py": "Python",
+                        "doT": "JavaScript"
                     },
 
                     "{{ }}": {
@@ -44,7 +70,22 @@ te_symbols = {
                         "Tornado": "Python",
                         "Twig": "PHP",
                         "Blade": "PHP",
-                        "Jinjava": "Java"
+                        "Jinjava": "Java",
+                        "JsRender": "JavaScript",
+                        "Handlebars": "JavaScript",
+                        "Nunjucks": "JavaScript",
+                        "Vue": "JavaScript",
+                        "SquirrellyJS": "JavaScript",
+                        "Template7": "JavaScript",
+                        "Golang": "Default Engine"
+                    },
+
+                    "{{# }}": {
+                        "Template7": "JavaScript"
+                    },
+
+                    "{{: }}": {
+                        "JsRender": "JavaScript"
                     },
 
                     "<? ?>": {
@@ -56,11 +97,14 @@ te_symbols = {
                     },
 
                     "<% %>": {
-                        "Mako": "Python",
+                        "Mako": "Python"
                     },
 
                     "<%= %>": {
-
+                        "EJS": "JavaScript",
+                        "ERB": "Ruby",
+                        "Mojolicious": "Perl",
+                        "ASP": ".NET"
                     },
 
                     "{% %}": {

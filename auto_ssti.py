@@ -1,14 +1,15 @@
 import asyncio
 import re
 import random
+import signal
 import sys
 import threading
 
 import aiohttp
+import psutil
 from pyppeteer import launch
 from te_symbols import te_symbols
-import subprocess, time, socket
-import spitfire
+import subprocess
 import os
 
 
@@ -23,13 +24,8 @@ def read_output(stream, prefix):
 
 def launch_server(server_relpath):
     # set the correct working directory when launching the subprocess of spitfire_server.py
-    # server_directory = os.path.dirname(os.path.abspath("spitfire_tempeng/spitfire_server.py"))
-
     server_directory = os.path.dirname(os.path.abspath(server_relpath))
-    print(server_directory)
-
     server_file = server_relpath.split("/")[1]
-
     if server_relpath.split(".")[1] == "php":
         args = ["php", "-S", "127.0.0.1:8080", server_file]
     else:
@@ -47,6 +43,13 @@ def launch_server(server_relpath):
     threading.Thread(target=read_output, args=(server_process.stderr, server_file + "-ERROR"), daemon=True).start()
 
     return server_process
+
+def shutdown_server(process):
+    """ shutdown the main process and all its children"""
+    parent_process = psutil.Process(process.pid)
+    for child in parent_process.children(recursive=True):
+        child.kill()
+    parent_process.kill()
 
 
 async def check_server_ready(url):
@@ -69,7 +72,6 @@ def generate_numbers_for_product():
     # Define the lower and upper bounds for a 10-digit to 18-digit product
     lower_bound = 10 ** 9  # 10 digits
     upper_bound = 10 ** 18  # 18 digits
-
     # Find two random numbers whose product is within the desired range
     while True:
         num1 = random.randint(10 ** 4, 10 ** 9)  # Random number for num1 (4 to 9 digits)
@@ -82,9 +84,7 @@ def generate_numbers_for_product():
 def create_payload(symbols):
     # generate random numbers for the payload product
     num_1, num_2, _ = generate_numbers_for_product()
-
     operation = f"{num_1}*{num_2}"
-
     if " " in symbols:
         # replace the space with the actual operation
         payload = symbols.replace(" ", operation)
@@ -98,11 +98,9 @@ def create_payload(symbols):
 async def exec_payload(form, payload):
     # find the input text areas
     input_txt_lst = await form.querySelectorAll("input[type=\"text\"]")
-
     # write the payload inside every input text area of the form
     for input_txt in input_txt_lst:
         await input_txt.type(payload)
-
     # find the button element and click
     btn = await form.querySelector("input[type='submit'], button[type='submit']")
     await btn.click()
@@ -117,7 +115,6 @@ async def scraper(page, url, payload):
         curr_form = forms_lst[form_idx]
         try:
             await exec_payload(curr_form, payload)
-
             # be careful for real web sites: check if the context changes
             await page.waitForNavigation()
             html_resp += await page.content()
@@ -177,8 +174,11 @@ def find_template_engines(success_symbols):
 
     unique_engines = set(engines_by_symbols)
     for eng in unique_engines:
+        # if the same engine is contained a number of times equal to the number of successive symbols
+        #
         if engines_by_symbols.count(eng) == len(success_symbols):
             target_engines[eng] = te_symbols[success_symbols[0]][eng]
+
 
     return target_engines
 
@@ -241,8 +241,9 @@ if __name__ == "__main__":
         choice = ""
         server_process = launch_server(server)  # only needed to automatically launch servers from here
         asyncio.run(main())
-        server_process.terminate()
-        server_process.wait()
+        shutdown_server(server_process)
+
+        #server_process.wait()
 
         # allow the user to stop execution before studying new server
         if server != servers_lst[-1]:
@@ -252,7 +253,7 @@ if __name__ == "__main__":
         if choice == "N":
             break
 
-##### EXECUTING spitfire_server.py FIRST AND THEN auto_ssti.py
-"""
-asyncio.run(main())
-"""
+    ##### EXECUTING spitfire_server.py FIRST AND THEN auto_ssti.py
+    """
+    asyncio.run(main())
+    """
