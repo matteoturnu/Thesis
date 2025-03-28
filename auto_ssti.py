@@ -44,6 +44,7 @@ def launch_server(server_relpath):
 
     return server_process
 
+
 def shutdown_server(process):
     """ shutdown the main process and all its children"""
     parent_process = psutil.Process(process.pid)
@@ -163,24 +164,36 @@ def store_symbols(symbols_lst, payloads_lst, new_symbols, new_payload):
         payloads_lst.append(new_payload)
 
 
-
 def find_template_engines(success_symbols):
     target_engines = {}
-    engines_by_symbols = []
+    engines_by_symbols = {}
+    simple_dict = True
 
     for symbols in success_symbols:
-        for te in te_symbols[symbols]:
-            engines_by_symbols.append(te)
+        for te, lang in te_symbols[symbols].items():
+            if te not in engines_by_symbols:
+                engines_by_symbols[te] = {"symbols": {symbols}, "language": lang}
+            else:
+                engines_by_symbols[te]["symbols"].add(symbols)
 
-    unique_engines = set(engines_by_symbols)
+    unique_engines = set(engines_by_symbols.keys())
     for eng in unique_engines:
-        # if the same engine is contained a number of times equal to the number of successive symbols
-        #
-        if engines_by_symbols.count(eng) == len(success_symbols):
-            target_engines[eng] = te_symbols[success_symbols[0]][eng]
+        if len(engines_by_symbols[eng]["symbols"]) == len(success_symbols):
+            target_engines[eng] = engines_by_symbols[eng]["language"]
 
+    if not target_engines:
+        simple_dict = False
+        possible_engines = {}
+        # save the maximum number of symbols a template engine recognises
+        max_n_symbols = max(len(data["symbols"]) for data in engines_by_symbols.values())
+        for eng in unique_engines:
+            if len(engines_by_symbols[eng]["symbols"]) == max_n_symbols:
+                possible_engines[eng] = {"symbols": engines_by_symbols[eng]["symbols"],
+                                     "language": engines_by_symbols[eng]["language"]}
+        return simple_dict, possible_engines,
 
-    return target_engines
+    return simple_dict, target_engines
+
 
 
 async def main():
@@ -223,12 +236,15 @@ async def main():
     if success_payloads_lst:
         print("\nSome successful payloads have been found:\n", success_payloads_lst)
         print(f"Target template engine(s): ")
-        te_dct = find_template_engines(success_symbols_lst)
-        [print(f"--> {te} ({te_dct[te]})") for te in te_dct]
+        simple_dict, te_dct = find_template_engines(success_symbols_lst)
+        if simple_dict:
+            [print(f"--> {te} ({lang})") for te, lang in te_dct.items()]
+        else:
+            [print(f"--> {te} ({symb_lang['language']}), for symbols {list(symb_lang['symbols'])})")
+                for te, symb_lang in te_dct.items()]
 
     else:
         print("No successful payload has been found.")
-
 
 
 if __name__ == "__main__":
@@ -243,7 +259,7 @@ if __name__ == "__main__":
         asyncio.run(main())
         shutdown_server(server_process)
 
-        #server_process.wait()
+        # server_process.wait()
 
         # allow the user to stop execution before studying new server
         if server != servers_lst[-1]:
