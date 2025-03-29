@@ -8,7 +8,7 @@
     $templates = new League\Plates\Engine('php_templates');
 
     if ($_POST) {
-        if ($_POST["identity_form"]) {
+        if (isset($_POST["identity_form"])) {
             $name = $_POST["name"];
             $surname = $_POST["surname"];
 
@@ -27,7 +27,7 @@
                             <p>Your surname is: $surname ?></p>";
 
         }
-        else if ($_POST["credentials_form"]) {
+        else if (isset($_POST["credentials_form"])) {
             $user = $_POST["username"];
             $email = $_POST["email"];
 

@@ -1,7 +1,6 @@
 import asyncio
 import re
 import random
-import signal
 import sys
 import threading
 
@@ -19,7 +18,7 @@ def read_output(stream, prefix):
         line = stream.readline()
         if not line:
             break
-        # print(f"[{prefix}] {line.strip()}")
+        #print(f"[{prefix}] {line.strip()}")
 
 
 def launch_server(server_relpath):
@@ -107,7 +106,7 @@ async def exec_payload(form, payload):
     await btn.click()
 
 
-async def scraper(page, url, payload):
+async def inject_payload(page, url, payload):
     await page.goto(url)
     # search for all the existing forms in the page first
     forms_lst = await page.querySelectorAll("form")
@@ -126,6 +125,16 @@ async def scraper(page, url, payload):
         except Exception as e:
             print(e)
     return html_resp
+
+
+def check_te_in_response(response, eng_lang_dct):
+    engine_found = ""
+    for eng, lang in eng_lang_dct.items():
+        if re.search(eng, response, re.IGNORECASE):
+            engine_found = eng
+            break
+
+    return engine_found
 
 
 def validate_injection(op_res, html_resp):
@@ -210,12 +219,48 @@ async def main():
 
     success_symbols_lst = []
     success_payloads_lst = []
+    engines_dct = dict()
+    for _, engines in te_symbols.items():
+        engines_dct.update(engines)
 
-    for curr_symbols in te_symbols:
+    for symbols in te_symbols:
+        curr_symbols = symbols
         payload, operation = create_payload(curr_symbols)
         print(f"\nTrying symbols '{curr_symbols}' with payload '{payload}'...")
 
-        response = await scraper(page, url, payload)
+        response = await inject_payload(page, url, payload)
+        #print(response)
+
+        # looking for an exception reporting the template engine name
+        #####
+        eng_name = check_te_in_response(response, engines_dct)
+        if eng_name != "":
+            print(f"\nTemplate engine '{eng_name}' found in the response! ")
+            # retrieve the symbols recognized by the engine
+            eng_symbols = []
+            for tags, engines in te_symbols.items():
+                if eng_name in engines:
+                    eng_symbols.append(tags)
+
+            for curr_tags in eng_symbols:
+                payload, operation = create_payload(curr_tags)
+                print(f"\nTrying symbols '{curr_tags}' with payload '{payload}'...")
+
+                response = await inject_payload(page, url, payload)
+                result = str(eval(operation))
+                success, resp_matches = validate_injection(result, response)
+                if success:
+                    # check if current symbols have to be added or not
+                    store_symbols(success_symbols_lst, success_payloads_lst, curr_tags, payload)
+
+                    print("Successful injection!")
+                    for match in resp_matches:
+                        print(match)
+                else:
+                    print("Failed injection.")
+            break
+
+
         result = str(eval(operation))
         success, resp_matches = validate_injection(result, response)
         if success:
