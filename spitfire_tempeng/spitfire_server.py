@@ -98,7 +98,12 @@ server_address = ("", PORT)
 
 env = spitfire.Environment(TEMPLATE_DIR)
 # 'spitfire_templates' folder becomes the "home" of this Environment
-env.load_dir() # no parameters on load_dir() loads the "home" directory
+# error in env.load_dir() when welcome.spf has characters "${ }"
+try:
+    env.load_dir() # no parameters on load_dir() loads the "home" directory
+except Exception as e:
+    print(e)
+
 httpd = HTTPServer(server_address, MyHandler)
 
 print(f"Serving on http://127.0.0.1:{PORT}")

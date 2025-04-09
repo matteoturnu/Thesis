@@ -17,25 +17,51 @@
         <label for="vehicle2"> I have a car</label><br>
         <input type="checkbox" id="vehicle3" name="vehicle3" value="Boat">
         <label for="vehicle3"> I have a boat</label>
-
+        <br>
         <input type="password" name="password" placeholder="Your password"> <br><br>
         <input type="email" name="email" placeholder="Your e-mail"> <br><br>
         <input type="search" name="search" placeholder="Your search"> <br><br>
         <input type="tel" name="phone_number" placeholder="Your phone number"> <br><br>
         <textarea id="w3review" name="w3review" rows="4" cols="50"></textarea>
-
-        <input type="submit" name="identity_form" value="Send">
+        <br>
+        <label for="sex"></label>
+        <select id="sex">
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+        </select>
+        <input type="submit" name="identity_form" id="send1" value="Send">
     </form>
 
     <form method="post" action="/latte.php">
         <input type="text" name="username" placeholder="Your username"> <br><br>
         <input type="email" name="email" placeholder="Your e-mail"> <br><br>
 
-        <input type="submit" name="credentials_form" value="Send">
+        <input type="submit" name="credentials_form" id="send2" value="Send">
     </form>
 
-    <a href="latte.php?title=ciao&message=hello_world">Try me</a>
-    <a href="latte.php?greeting=hi&clap=clap_clap">Try me too</a>
+    <button type="button" id="useless">Useless button</button>
+    <button onclick="window.location.href='/?query1=try&query2=me'" id="fullnav">JS full nav button</button>
+    <button onclick="document.getElementById('dynamic_par').innerText='surprise!'" id="dynamic">JS dynamic p button</button>
+
+    <script>
+        function loadDoc() {
+          var xhttp = new XMLHttpRequest();
+          xhttp.onreadystatechange = function() {
+            if (this.readyState == 4 && this.status == 200) {
+              document.getElementById("ajax_btn").innerHTML = this.responseText;
+            }
+          };
+          /* it shows form.latte */
+          xhttp.open("GET", "", true);
+          xhttp.send();
+        }
+    </script>
+    <button type="button" onclick="loadDoc()" id="ajax_btn">Change Content</button>
+
+    <p id="dynamic_par"></p>
+    <a href="latte.php?title=ciao&message=hello_world" id="1">Try me</a>
+    <a href="latte.php?greeting=hi&clap=clap_clap" id="2">Try me too</a>
+
 
   </body>
 </html>
