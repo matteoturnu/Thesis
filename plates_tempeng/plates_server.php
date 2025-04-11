@@ -10,6 +10,8 @@
     if ($_POST) {
         if (isset($_POST["identity_form"])) {
             $name = $_POST["name"];
+            //escape name
+            $name = htmlspecialchars($name);
             $surname = $_POST["surname"];
 
             /*$new_template = "<h1>User Profile</h1>
@@ -24,7 +26,7 @@
                             <p>Your surname is: <?php echo \"${surname}\" ?></p>";*/
             $new_template = "<h1>User Profile</h1>
                             <p>Hello, $name </p>
-                            <p>Your surname is: $surname ?></p>";
+                            <p>Your surname is: $surname</p>";
 
         }
         else if (isset($_POST["credentials_form"])) {
@@ -33,7 +35,7 @@
 
             $new_template = "<h1>User Profile</h1>
                             <p>Hello, $user </p>
-                            <p>Your email is: $email ?></p>";
+                            <p>Your email is: $email</p>";
         }
 
         # create a file with the template

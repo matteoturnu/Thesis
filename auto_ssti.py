@@ -1,4 +1,5 @@
 import asyncio
+import html
 import re
 import random
 import sys
@@ -16,7 +17,11 @@ from payload_utils import *
 from engine_utils import *
 
 
+
 async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, url):
+    # contains sanitized once
+    modified_payloads = []
+
     payload, operation = create_payload(symbols)
     print(f"\nTrying symbols '{symbols}' with payload '{payload}'...")
 
@@ -35,7 +40,42 @@ async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, 
     else:
         print("Failed injection.")
 
-    return response
+        # process to find if sanitization occurred
+        # now inject legitimate data
+        default_input = "abcdefghijklmno"
+        legit_response = await inject_payload(page, url, default_input)
+
+        # build the expected html response when payload is used
+        expected_response = legit_response.replace(default_input, payload)
+        modified_payloads = get_html_changes(response, expected_response)
+
+
+        """
+        # take the payload (delimiters and operation) and search for it in the response
+        payload_found, resp_matches = validate_injection(payload, response)
+        operation_found = False
+        if not payload_found:
+            operation_found, resp_matches = validate_injection(operation, response)
+
+
+        if payload_found or operation_found:
+            # either payload doesn't work or it has been sanitized (ex: html comments for payload)
+            # second case: find the changed content
+            # sanitized payload may be within some other types of tags. ex: "Hello, <!-- ${...} -->"
+
+            for match in resp_matches:
+                sanitized, escaped_payload = check_if_sanitized(payload, match)
+                if sanitized:
+                    if escaped_payload not in modified_payloads:
+                        print(f"Sanitization occurred for payload {payload}!")
+                        modified_payloads.append(escaped_payload)
+
+        else:
+            print(f"Neither payload {payload} nor operation {operation} found in the response.")
+            print("Complete response: ", response)
+        """
+
+    return response, modified_payloads
 
 
 async def main():
@@ -53,10 +93,12 @@ async def main():
     success_symbols_lst = []
     success_payloads_lst = []
     engines_dct = load_engines()
-
-    for symbols in te_symbols:
-    #for symbols in ["{ }", "{= }"]:
-        response = await ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, url)
+    sanitized_payloads_by_symbols = dict()
+    #for symbols in te_symbols:
+    for symbols in ["<? ?>", "{ }", "{= }"]:
+        response, sanitized_payloads = await ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, url)
+        if sanitized_payloads:
+            sanitized_payloads_by_symbols[symbols] = sanitized_payloads
         eng_name = check_te_in_response(response, engines_dct)
         if eng_name != "":
             print(f"\nTemplate engine '{eng_name}' found in the response! ")
@@ -77,17 +119,18 @@ async def main():
         print(f"Target template engine(s): ")
         simple_dict, te_dct = find_template_engines(success_symbols_lst)
         show_engines(simple_dict, te_dct)
-
-
     else:
         print("No successful payload has been found.")
+
+    if sanitized_payloads_by_symbols:
+        print("Some payloads seem to have been sanitized:")
+        print(sanitized_payloads_by_symbols)
 
 
 if __name__ == "__main__":
     ### USE THIS PIECE OF CODE IF YOU ONLY EXECUTE auto_ssti.py ###
 
-    servers_lst = ["latte_tempeng/latte_server.php", "spitfire_tempeng/spitfire_server.py",
-                   "plates_tempeng/plates_server.php"]
+    servers_lst = ["latte_tempeng/latte_server.php", "spitfire_tempeng/spitfire_server.py", "plates_tempeng/plates_server.php"]
 
     for server in servers_lst:
         choice = ""

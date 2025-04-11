@@ -2,6 +2,7 @@ import asyncio
 import random
 import re
 from bs4 import BeautifulSoup
+import html
 
 
 def generate_numbers_for_product():
@@ -57,10 +58,45 @@ def on_link_request(result, obj):
 
     return lambda request: asyncio.create_task(is_request(request))
 
-def extract_new_tags(new_html, old_html):
+def get_html_changes(new_html, old_html):
+    import difflib
+    diff = difflib.ndiff(old_html.splitlines(), new_html.splitlines())
+    changes = [line.strip("-+ ") for line in diff if line.startswith('+ ') or line.startswith('- ')]
+
+    diffs = []
+    for i in range(0, len(changes), 2):
+        new_chars_idx = []
+        changed_payload = ""
+
+        old_line = changes[i]
+        new_line = changes[i + 1]
+        matcher = difflib.SequenceMatcher(None, old_line, new_line)
+        for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+            if tag in ('replace', 'insert'):
+                new_chars_idx.append([j1, j2])
+        prev_end = 0
+        for j, (start, end) in enumerate(new_chars_idx):
+            if j == 0:
+                prev_end = start
+            changed_payload += new_line[prev_end:start] + new_line[start:end]
+            prev_end = end
+        if changed_payload not in diffs:
+            diffs.append(changed_payload)
+
+
+    """for old_line, new_line in changes:
+        matcher = difflib.SequenceMatcher(None, old_line, new_line)
+        for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+            if tag in ('replace', 'insert'):
+                diffs.append(new_line[j1:j2])
+    """
+    return diffs
+
+
     # find_all() returns all the tags found, not one by one but considering their tree structure
     # e.g.: content = <head></head><body><p></p></body>
     #       it returns [<head></head>, <body><p></p></body>, <p></p>]
+    """
     old_soup = BeautifulSoup(old_html, "html.parser").find_all()
     new_soup = BeautifulSoup(new_html, "html.parser").find_all()
 
@@ -73,6 +109,22 @@ def extract_new_tags(new_html, old_html):
 
     # extract only the new tags
     for i, candidate in enumerate(diffs):
+        is_common = True  # assume candidate is contained in or equal to all others
+
+        for j, other in enumerate(diffs):
+            if j != i:
+                if not (str(candidate) in str(other) or str(candidate) == str(other)):
+                    is_common = False
+                    break  # no need to check further
+
+
+        if is_common:
+            new_tags.append(candidate)
+    """
+
+
+    """
+    for i, candidate in enumerate(diffs):
         # all(): returns True if all the conditions inside it are True
         # condition: element is equal to or contained in all the others
         if all(
@@ -80,6 +132,7 @@ def extract_new_tags(new_html, old_html):
                 for j, other in enumerate(diffs) if j != i
         ):
             new_tags.append(candidate)
+    """
 
     return new_tags
 
@@ -141,7 +194,7 @@ async def exec_payload_in_inputs(page, button_elem, payload, url):
         await page.setRequestInterception(False)
         # submit button
         html_resp = await page.content()
-        print("Submit button")
+        #print("Submit button")
 
     elif dom_reloaded.done():  # and if it's False
         # ajax or js-nav button
@@ -233,17 +286,17 @@ async def inject_payload(page, url, payload):
     buttons_lst = await page.querySelectorAll("input[type='submit'], button")
     for button_idx in range(len(buttons_lst)):
         button_elem = buttons_lst[button_idx]
-        print("Current button: ", await page.evaluate('(btn)=>btn.id', button_elem))
-        html = await exec_payload_in_inputs(page, button_elem, payload, url)
-        html_resp += html
+        # print("Current button: ", await page.evaluate('(btn)=>btn.id', button_elem))
+        current_html = await exec_payload_in_inputs(page, button_elem, payload, url)
+        html_resp += current_html
         buttons_lst = await page.querySelectorAll("input[type='submit'], button")
 
     links_lst = await page.querySelectorAll("a[href]")
     for link_idx in range(len(links_lst)):
         link_elem = links_lst[link_idx]
         # print("Current link: ", await page.evaluate('(link)=>link.id', link_elem))
-        html = await exec_payload_in_link(page, link_elem, payload, url)
-        html_resp += html
+        current_html = await exec_payload_in_link(page, link_elem, payload, url)
+        html_resp += current_html
         links_lst = await page.querySelectorAll("a[href]")
 
     return html_resp
@@ -253,8 +306,7 @@ def validate_injection(op_res, html_resp):
     success = False
     responses_lst = list()
     res_matches = None
-    # match number in scientific notation
-    res_matches = list(re.finditer(op_res, html_resp))
+    res_matches = list(re.finditer(re.escape(op_res), html_resp))
     if res_matches:
         success = True
         for match in res_matches:
@@ -263,6 +315,17 @@ def validate_injection(op_res, html_resp):
             responses_lst.append(html_resp[start:end])
 
     return success, responses_lst
+
+
+def check_if_sanitized(payload, content):
+    # 1) html escaping
+    escaped_payload = html.escape(payload)
+    if escaped_payload != payload and escaped_payload in content:
+        return True, escaped_payload
+
+    return False, escaped_payload
+
+
 
 
 def store_symbols(symbols_lst, payloads_lst, new_symbols, new_payload):

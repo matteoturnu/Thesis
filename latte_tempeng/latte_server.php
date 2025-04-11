@@ -32,16 +32,9 @@
             $tel = $_POST["phone_number"];
             $textarea = $_POST["w3review"];
 
-                /*$new_template = "<h1>User Profile</h1>
-                <p>Hello, <?php echo \"$name\" ?></p>";
-                <?*/
+            // escaping search
+            $search = htmlspecialchars($search);
 
-                /*$new_template = "<h1>User Profile</h1>
-                                <p>Hello, <?php echo \$user ?></p>";*/
-
-                /*$new_template = "<h1>User Profile</h1>
-                                <p>Hello, <?php echo \"${name}\" ?></p>
-                                <p>Your surname is: <?php echo \"${surname}\" ?></p>";*/
             $new_template = "<h1>User Profile</h1>
                                 <p>Hello, $name </p>
                                 <p>Your other data: </p>
