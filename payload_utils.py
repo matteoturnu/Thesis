@@ -61,6 +61,7 @@ def on_link_request(result, obj):
     return lambda request: asyncio.create_task(is_request(request))
 
 def get_html_changes(new_html, old_html):
+    # NOTE: THIS ALGORITHM WORK ONLY ON DELIMITERS REQUIRING OPENING AND CLOSING TAGS (ex: <? ?>, {= }...)
     import difflib
     diff = difflib.ndiff(old_html.splitlines(), new_html.splitlines())
     changes = [line.strip("-+ ") for line in diff if line.startswith('+ ') or line.startswith('- ')]
