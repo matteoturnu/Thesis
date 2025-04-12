@@ -49,31 +49,10 @@ async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, 
         expected_response = legit_response.replace(default_input, payload)
         modified_payloads = get_html_changes(response, expected_response)
 
+        # ex: email get changed to "a@a" if the payload is invalid because of a client-side check
+        # modified_payloads will contain this value as the old and new html responses are different
 
-        """
-        # take the payload (delimiters and operation) and search for it in the response
-        payload_found, resp_matches = validate_injection(payload, response)
-        operation_found = False
-        if not payload_found:
-            operation_found, resp_matches = validate_injection(operation, response)
-
-
-        if payload_found or operation_found:
-            # either payload doesn't work or it has been sanitized (ex: html comments for payload)
-            # second case: find the changed content
-            # sanitized payload may be within some other types of tags. ex: "Hello, <!-- ${...} -->"
-
-            for match in resp_matches:
-                sanitized, escaped_payload = check_if_sanitized(payload, match)
-                if sanitized:
-                    if escaped_payload not in modified_payloads:
-                        print(f"Sanitization occurred for payload {payload}!")
-                        modified_payloads.append(escaped_payload)
-
-        else:
-            print(f"Neither payload {payload} nor operation {operation} found in the response.")
-            print("Complete response: ", response)
-        """
+        modified_payloads = [mod for mod in modified_payloads if operation in mod]
 
     return response, modified_payloads
 
@@ -130,7 +109,7 @@ async def main():
 if __name__ == "__main__":
     ### USE THIS PIECE OF CODE IF YOU ONLY EXECUTE auto_ssti.py ###
 
-    servers_lst = ["latte_tempeng/latte_server.php", "spitfire_tempeng/spitfire_server.py", "plates_tempeng/plates_server.php"]
+    servers_lst = ["spitfire_tempeng/spitfire_server.py", "latte_tempeng/latte_server.php", "plates_tempeng/plates_server.php", ]
 
     for server in servers_lst:
         choice = ""

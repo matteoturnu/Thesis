@@ -1,6 +1,8 @@
 import asyncio
 import random
 import re
+import string
+
 from bs4 import BeautifulSoup
 import html
 
@@ -74,15 +76,110 @@ def get_html_changes(new_html, old_html):
         for tag, i1, i2, j1, j2 in matcher.get_opcodes():
             if tag in ('replace', 'insert'):
                 new_chars_idx.append([j1, j2])
+
+        prev_end = 0
+        """
+        for j, (start, end) in enumerate(new_chars_idx):
+            while start > prev_end and new_line[start - 1] not in string.whitespace:
+                if new_line[start - 1].isalnum() or new_line[start - 1] == '>':
+                    break
+                start -= 1
+            prev_end = end
+        """
+        prev_end = 0
+        for j in range(0, len(new_chars_idx)-1, 2):
+            payload_start = new_chars_idx[j][0]
+            payload_end = new_chars_idx[j+1][1]
+
+            while payload_start > prev_end and new_line[payload_start - 1] not in string.whitespace:
+                if new_line[payload_start - 1].isalnum() or new_line[payload_start - 1] == '>':
+                    break
+                payload_start -= 1
+            prev_end = payload_end
+
+            #start_next = min(new_chars_idx[j + 2][0], len(new_line))
+            if j + 2 > len(new_chars_idx) - 1:
+                start_next = len(new_line)
+            else:
+                start_next = new_chars_idx[j+2][0]
+            while payload_end < start_next and new_line[payload_end] not in string.whitespace:
+                if new_line[payload_end].isalnum() or new_line[payload_end] == '<':
+                    break
+                payload_end += 1
+
+            changed_payload = new_line[payload_start:payload_end]
+            if changed_payload:
+                if changed_payload not in diffs and all(d not in changed_payload for d in diffs):
+                    # condition 2: needed for "your vehicles" checklists from latte script
+                    # as it prints 3 payloads instead of one
+                    diffs.append(changed_payload)
+
+
+            """
+            start_next = min(new_chars_idx[j+1][0], len(new_line))
+            while end < start_next and new_line[end] not in string.whitespace:
+                if new_line[end].isalnum() or new_line[end] == '<':
+                    break
+                end += 1
+
+            changed_payload = new_line[start:end].strip()
+            """
+
+
+        """
+        new_chars_idx = [new_chars_idx[0][0], new_chars_idx[-1][-1]]
+        start, end = new_chars_idx[0], new_chars_idx[1]
+
+        while start > 0 and new_line[start-1] not in string.whitespace:
+            if new_line[start-1].isalnum() or new_line[start-1] == '>':
+                break
+            start -= 1
+
+        while end < len(new_line) and new_line[end] not in string.whitespace:
+            if new_line[end].isalnum() or new_line[end] == '<':
+                break
+            end += 1
+
+        changed_payload = new_line[start:end].strip()
+        if changed_payload:
+            if changed_payload not in diffs and all(d not in changed_payload for d in diffs):
+                # condition 2: needed for "your vehicles" checklists from latte script
+                # as it prints 3 payloads instead of one
+                diffs.append(changed_payload)
+                
+        """
+
+        """
         prev_end = 0
         for j, (start, end) in enumerate(new_chars_idx):
             if j == 0:
                 prev_end = start
             changed_payload += new_line[prev_end:start] + new_line[start:end]
+
+            k = 1
+            valid_before = True
+            valid_after = True
+            while (start - k) >= 0 and (end + k) < len(new_line) and (valid_before or valid_after):
+                # as soon as one surrounding char is alphanumeric, stop scanning towards that direction
+                if valid_before:
+                    before = new_line[start-k]
+                    if not before.isalnum():
+                        changed_payload = before + changed_payload
+                    else:
+                        valid_before = False
+                if valid_after:
+                    after = new_line[end+k]
+                    if not after.isalnum():
+                        changed_payload += after
+                    else:
+                        valid_after = False
+                k += 1
+
+
             prev_end = end
         if changed_payload not in diffs:
             diffs.append(changed_payload)
-
+    """
 
     """for old_line, new_line in changes:
         matcher = difflib.SequenceMatcher(None, old_line, new_line)
