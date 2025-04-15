@@ -34,7 +34,6 @@ def create_payload(symbols):
     return payload, operation
 
 
-
 def on_btn_request(dom_reloaded, obj):
     async def is_request(request):
         if request.isNavigationRequest() and request.method == "POST":
@@ -60,8 +59,70 @@ def on_link_request(result, obj):
 
     return lambda request: asyncio.create_task(is_request(request))
 
+"""
 def get_html_changes(new_html, old_html):
-    # NOTE: THIS ALGORITHM WORK ONLY ON DELIMITERS REQUIRING OPENING AND CLOSING TAGS (ex: <? ?>, {= }...)
+    # NOTE: THIS ALGORITHM WORK ONLY WHEN SANITIZATION IS APPLIED TO BOTH 
+    # THE OPENING AND CLOSING TAGS (ex: <? ?>, {= }, ...)
+    import difflib
+    diff = difflib.ndiff(old_html.splitlines(), new_html.splitlines())
+    changes = [line.strip("-+ ") for line in diff if line.startswith('+ ') or line.startswith('- ')]
+
+    diffs = []
+    for i in range(0, len(changes), 2):
+        new_chars_idx = []
+        old_line = changes[i]
+        new_line = changes[i + 1]
+        matcher = difflib.SequenceMatcher(None, old_line, new_line)
+        for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+            if tag in ('replace', 'insert'):
+                new_chars_idx.append([j1, j2])
+
+        prev_end = 0
+        for j in range(0, len(new_chars_idx) - 1, 2):
+            payload_start = new_chars_idx[j][0]
+            payload_end = new_chars_idx[j + 1][1]
+
+            while payload_start > prev_end and new_line[payload_start - 1] not in string.whitespace:
+                if new_line[payload_start - 1].isalnum() or new_line[payload_start - 1] == '>':
+                    break
+                payload_start -= 1
+            prev_end = payload_end
+
+            if j + 2 > len(new_chars_idx) - 1:
+                start_next = len(new_line)
+            else:
+                start_next = new_chars_idx[j + 2][0]
+            while payload_end < start_next and new_line[payload_end] not in string.whitespace:
+                if new_line[payload_end].isalnum() or new_line[payload_end] == '<':
+                    break
+                payload_end += 1
+
+            changed_payload = new_line[payload_start:payload_end]
+            if changed_payload and changed_payload not in diffs:
+                is_contained = False
+                for idx, d in enumerate(diffs):
+                    if changed_payload in d or d in changed_payload:
+                        # if d is in changed_payload do nothing
+                        is_contained = True
+                    if changed_payload in d:
+                        diffs[idx] = changed_payload
+
+                if not is_contained:
+                    diffs.append(changed_payload)
+
+    return diffs
+"""
+
+def get_sanitized_payloads(new_html, old_html, symbols, operation):
+    # NOTE: THIS VERSION WORKS FOR 2 CASES: OPENING DELIMITER SANITIZED OR BOTH DELIMITERS SANITIZED
+    # NOT WORKING WHEN ONLY THE CLOSING DELIMITER IS SANITIZED
+    # e.g., works for: <?7*7?> --> &lt;?7*7?>, and <?7*7?> --> &lt;?7*7?&gt;
+
+    # ENHANCEMENT: use a blacklist of symbols for which stopping scanning
+    # ex: "," and "!" for forward scanning
+
+    # PROBLEM: CHECK EMAIL CASE FOR PLATES!
+    # STRANGE PAYLOADS: ['<!--?398683383*72556815?-->a@a', '&lt;?398683383*72556815?&gt;?-->a@a']}
     import difflib
     diff = difflib.ndiff(old_html.splitlines(), new_html.splitlines())
     changes = [line.strip("-+ ") for line in diff if line.startswith('+ ') or line.startswith('- ')]
@@ -79,18 +140,85 @@ def get_html_changes(new_html, old_html):
                 new_chars_idx.append([j1, j2])
 
         prev_end = 0
-        """
-        for j, (start, end) in enumerate(new_chars_idx):
-            while start > prev_end and new_line[start - 1] not in string.whitespace:
-                if new_line[start - 1].isalnum() or new_line[start - 1] == '>':
-                    break
-                start -= 1
-            prev_end = end
-        """
-        prev_end = 0
-        for j in range(0, len(new_chars_idx)-1, 2):
+        delimiter_start = ""
+        delimiter_end = ""
+        # considering only two cases: e.g. symbols "$" and symbols like "${ }"
+        if len(symbols) > 1:
+            delimiter_start, delimiter_end = symbols.split(" ")
+        else:
+            delimiter_start = symbols
+
+        del_start_len = len(delimiter_start)
+        del_end_len = len(delimiter_end)
+
+        for j in range(len(new_chars_idx)):
             payload_start = new_chars_idx[j][0]
-            payload_end = new_chars_idx[j+1][1]
+            payload_end = new_chars_idx[j][1]
+
+            # backwards scan
+            while payload_start > prev_end and new_line[payload_start - 1] not in string.whitespace:
+                if new_line[payload_start - 1].isalnum() or new_line[payload_start - 1] == '>':
+                    break
+                if delimiter_end != "" and (payload_start - del_end_len) > prev_end:
+                    # look for payload delimiters
+                    if new_line[payload_start-del_end_len-1:payload_start-1] == delimiter_end:
+                        # met ending delimiters of a previous payload, so stop scanning backwards
+                        break
+
+                payload_start -= 1
+            prev_end = payload_end
+
+            # forwards scan
+            if j + 1 > len(new_chars_idx) - 1:
+                start_next = len(new_line)
+            else:
+                start_next = new_chars_idx[j+1][0]
+            while payload_end < start_next and new_line[payload_end] not in string.whitespace:
+                if new_line[payload_end] == '<' or new_line[payload_end] == ',':
+                    break
+                if delimiter_end != "" and (payload_end + del_start_len) < start_next:
+                    # look for payload delimiters
+                    if new_line[payload_end:payload_end+del_start_len] == delimiter_end:
+                        # met ending delimiters of the current payload, so add them to payload and exit
+                        payload_end += del_end_len
+                        break
+                payload_end += 1
+
+            changed_payload = new_line[payload_start:payload_end]
+            if changed_payload:
+                merged_payloads = False
+                if operation not in changed_payload and diffs:
+                    if changed_payload not in diffs[-1]:
+                        # case where both delimiters sanitized: do a merge between this payload
+                        # and the last one saved in the list
+                        max_overlap = 0
+                        for idx in range(1, min(len(diffs[-1]), len(changed_payload)) + 1):
+                            if diffs[-1][-idx:] == changed_payload[:idx]:
+                                max_overlap = idx
+                        changed_payload = diffs[-1] + changed_payload[max_overlap:]
+                        merged_payloads = True
+
+                if changed_payload not in diff:
+                    if merged_payloads:
+                        diffs[-1] = changed_payload
+                    elif all(d not in changed_payload and changed_payload not in d for d in diffs):
+                        # ensure a list element is not contained in the payload and vice-versa
+                        diffs.append(changed_payload)
+                """elif merged_payloads:
+                    diffs.pop()
+                    """
+
+
+
+        """
+        for j in range(0, len(new_chars_idx), 2):
+            payload_start = new_chars_idx[j][0]
+
+            if j+1 < len(new_chars_idx):
+                payload_end = new_chars_idx[j+1][1]
+            else:
+                payload_end = new_chars_idx[j][1]
+                use_prev_j = True
 
             while payload_start > prev_end and new_line[payload_start - 1] not in string.whitespace:
                 if new_line[payload_start - 1].isalnum() or new_line[payload_start - 1] == '>':
@@ -98,141 +226,26 @@ def get_html_changes(new_html, old_html):
                 payload_start -= 1
             prev_end = payload_end
 
-            #start_next = min(new_chars_idx[j + 2][0], len(new_line))
+            
             if j + 2 > len(new_chars_idx) - 1:
                 start_next = len(new_line)
             else:
                 start_next = new_chars_idx[j+2][0]
             while payload_end < start_next and new_line[payload_end] not in string.whitespace:
-                if new_line[payload_end].isalnum() or new_line[payload_end] == '<':
-                    break
+                if use_prev_j:
+                    # need to take the rest of the line content from "end" to the actual payload end
+                    if new_line[payload_end] == '<':
+                        break
+                else:
+                    if new_line[payload_end].isalnum() or new_line[payload_end] == '<':
+                        break
                 payload_end += 1
 
-            changed_payload = new_line[payload_start:payload_end]
-            if changed_payload:
-                if changed_payload not in diffs and all(d not in changed_payload for d in diffs):
-                    # condition 2: needed for "your vehicles" checklists from latte script
-                    # as it prints 3 payloads instead of one
-                    diffs.append(changed_payload)
-
-
-            """
-            start_next = min(new_chars_idx[j+1][0], len(new_line))
-            while end < start_next and new_line[end] not in string.whitespace:
-                if new_line[end].isalnum() or new_line[end] == '<':
-                    break
-                end += 1
-
-            changed_payload = new_line[start:end].strip()
             """
 
+            
 
-        """
-        new_chars_idx = [new_chars_idx[0][0], new_chars_idx[-1][-1]]
-        start, end = new_chars_idx[0], new_chars_idx[1]
-
-        while start > 0 and new_line[start-1] not in string.whitespace:
-            if new_line[start-1].isalnum() or new_line[start-1] == '>':
-                break
-            start -= 1
-
-        while end < len(new_line) and new_line[end] not in string.whitespace:
-            if new_line[end].isalnum() or new_line[end] == '<':
-                break
-            end += 1
-
-        changed_payload = new_line[start:end].strip()
-        if changed_payload:
-            if changed_payload not in diffs and all(d not in changed_payload for d in diffs):
-                # condition 2: needed for "your vehicles" checklists from latte script
-                # as it prints 3 payloads instead of one
-                diffs.append(changed_payload)
-                
-        """
-
-        """
-        prev_end = 0
-        for j, (start, end) in enumerate(new_chars_idx):
-            if j == 0:
-                prev_end = start
-            changed_payload += new_line[prev_end:start] + new_line[start:end]
-
-            k = 1
-            valid_before = True
-            valid_after = True
-            while (start - k) >= 0 and (end + k) < len(new_line) and (valid_before or valid_after):
-                # as soon as one surrounding char is alphanumeric, stop scanning towards that direction
-                if valid_before:
-                    before = new_line[start-k]
-                    if not before.isalnum():
-                        changed_payload = before + changed_payload
-                    else:
-                        valid_before = False
-                if valid_after:
-                    after = new_line[end+k]
-                    if not after.isalnum():
-                        changed_payload += after
-                    else:
-                        valid_after = False
-                k += 1
-
-
-            prev_end = end
-        if changed_payload not in diffs:
-            diffs.append(changed_payload)
-    """
-
-    """for old_line, new_line in changes:
-        matcher = difflib.SequenceMatcher(None, old_line, new_line)
-        for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-            if tag in ('replace', 'insert'):
-                diffs.append(new_line[j1:j2])
-    """
     return diffs
-
-
-    # find_all() returns all the tags found, not one by one but considering their tree structure
-    # e.g.: content = <head></head><body><p></p></body>
-    #       it returns [<head></head>, <body><p></p></body>, <p></p>]
-    """
-    old_soup = BeautifulSoup(old_html, "html.parser").find_all()
-    new_soup = BeautifulSoup(new_html, "html.parser").find_all()
-
-    diffs = []
-    new_tags = []
-    for (old_soup_elem, new_soup_elem) in zip(old_soup, new_soup):
-        if old_soup_elem != new_soup_elem:
-            # diffs contains the tree structure which includes the new tag
-            diffs.append(new_soup_elem)
-
-    # extract only the new tags
-    for i, candidate in enumerate(diffs):
-        is_common = True  # assume candidate is contained in or equal to all others
-
-        for j, other in enumerate(diffs):
-            if j != i:
-                if not (str(candidate) in str(other) or str(candidate) == str(other)):
-                    is_common = False
-                    break  # no need to check further
-
-
-        if is_common:
-            new_tags.append(candidate)
-    """
-
-
-    """
-    for i, candidate in enumerate(diffs):
-        # all(): returns True if all the conditions inside it are True
-        # condition: element is equal to or contained in all the others
-        if all(
-                str(candidate) in str(other) or str(candidate) == str(other)
-                for j, other in enumerate(diffs) if j != i
-        ):
-            new_tags.append(candidate)
-    """
-
-    return new_tags
 
 
 
@@ -292,7 +305,7 @@ async def exec_payload_in_inputs(page, button_elem, payload, url):
         await page.setRequestInterception(False)
         # submit button
         html_resp = await page.content()
-        #print("Submit button")
+        # print("Submit button")
 
     elif dom_reloaded.done():  # and if it's False
         # ajax or js-nav button
@@ -424,8 +437,6 @@ def check_if_sanitized(payload, content):
     return False, escaped_payload
 
 
-
-
 def store_symbols(symbols_lst, payloads_lst, new_symbols, new_payload):
     # e.g. avoid to add "{{ }}" if the list already contains successful symbols "{ }"
     symbols_are_contained = False
@@ -445,3 +456,13 @@ def store_symbols(symbols_lst, payloads_lst, new_symbols, new_payload):
     if not symbols_lst or not symbols_are_contained:
         symbols_lst.append(new_symbols)
         payloads_lst.append(new_payload)
+
+"""
+############### TEST ##################
+old_html = "<p>Hello, <?7*7?></p>"
+new_html = "<p>Hello, <!--?7*7?--></p>"
+diffs = get_sanitized_payloads(new_html, old_html, "<? ?>", "7*7")
+print(diffs)
+########################################
+"""
+

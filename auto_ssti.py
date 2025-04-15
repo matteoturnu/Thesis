@@ -47,7 +47,7 @@ async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, 
 
         # build the expected html response when payload is used
         expected_response = legit_response.replace(default_input, payload)
-        modified_payloads = get_html_changes(response, expected_response)
+        modified_payloads = get_sanitized_payloads(response, expected_response, symbols, operation)
 
         # ex: email get changed to "a@a" if the payload is invalid because of a client-side check
         # modified_payloads will contain this value as the old and new html responses are different
