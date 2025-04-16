@@ -117,12 +117,12 @@ def get_sanitized_payloads(new_html, old_html, symbols, operation):
     # NOTE: THIS VERSION WORKS FOR 2 CASES: OPENING DELIMITER SANITIZED OR BOTH DELIMITERS SANITIZED
     # NOT WORKING WHEN ONLY THE CLOSING DELIMITER IS SANITIZED
     # e.g., works for: <?7*7?> --> &lt;?7*7?>, and <?7*7?> --> &lt;?7*7?&gt;
+    # IT DOESN'T WORK IF CHARACTERS ARE DELETED IN THE SANITIZED VERSION
 
     # ENHANCEMENT: use a blacklist of symbols for which stopping scan
     # ex: "," and "!" for forward scanning
 
-    # PROBLEM: CHECK EMAIL CASE FOR PLATES!
-    # STRANGE PAYLOADS: ['<!--?398683383*72556815?-->a@a', '&lt;?398683383*72556815?&gt;?-->a@a']}
+    #
     import difflib
     diff = difflib.ndiff(old_html.splitlines(), new_html.splitlines())
     changes = [line.strip("-+ ") for line in diff if line.startswith('+ ') or line.startswith('- ')]
