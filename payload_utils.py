@@ -118,7 +118,7 @@ def get_sanitized_payloads(new_html, old_html, symbols, operation):
     # NOT WORKING WHEN ONLY THE CLOSING DELIMITER IS SANITIZED
     # e.g., works for: <?7*7?> --> &lt;?7*7?>, and <?7*7?> --> &lt;?7*7?&gt;
 
-    # ENHANCEMENT: use a blacklist of symbols for which stopping scanning
+    # ENHANCEMENT: use a blacklist of symbols for which stopping scan
     # ex: "," and "!" for forward scanning
 
     # PROBLEM: CHECK EMAIL CASE FOR PLATES!
@@ -128,6 +128,9 @@ def get_sanitized_payloads(new_html, old_html, symbols, operation):
     changes = [line.strip("-+ ") for line in diff if line.startswith('+ ') or line.startswith('- ')]
 
     diffs = []
+    # i related to the last element saved in diffs
+    # i refers always to the old element in the html response
+    last_i_saved = -1
     for i in range(0, len(changes), 2):
         new_chars_idx = []
         changed_payload = ""
@@ -188,7 +191,7 @@ def get_sanitized_payloads(new_html, old_html, symbols, operation):
             if changed_payload:
                 merged_payloads = False
                 if operation not in changed_payload and diffs:
-                    if changed_payload not in diffs[-1]:
+                    if i == last_i_saved and changed_payload not in diffs[-1]:
                         # case where both delimiters sanitized: do a merge between this payload
                         # and the last one saved in the list
                         max_overlap = 0
@@ -201,9 +204,12 @@ def get_sanitized_payloads(new_html, old_html, symbols, operation):
                 if changed_payload not in diff:
                     if merged_payloads:
                         diffs[-1] = changed_payload
+                        last_i_saved = i
                     elif all(d not in changed_payload and changed_payload not in d for d in diffs):
                         # ensure a list element is not contained in the payload and vice-versa
                         diffs.append(changed_payload)
+                        last_i_saved = i
+
                 """elif merged_payloads:
                     diffs.pop()
                     """
@@ -457,12 +463,20 @@ def store_symbols(symbols_lst, payloads_lst, new_symbols, new_payload):
         symbols_lst.append(new_symbols)
         payloads_lst.append(new_payload)
 
-"""
+
 ############### TEST ##################
-old_html = "<p>Hello, <?7*7?></p>"
-new_html = "<p>Hello, <!--?7*7?--></p>"
-diffs = get_sanitized_payloads(new_html, old_html, "<? ?>", "7*7")
-print(diffs)
+old_html_lst = ["<p>Hello, <?7*7?></p>", "<p>Hello, <?7*7?>, <?7*7?></p>", "<p>Hello, <?7*7?>, <?7*7?>, <?7*7?></p>",
+                "<p>Hello, <?7*7?>, <?7*7?>, <?7*7?></p>",
+                "<p>Hello, <?7*7?>, <?7*7?>, <?7*7?></p>",
+                "<p>Hello, ${7*7}, ${7*7}, ${7*7}</p>"]
+new_html_lst = ["<p>Hello, <!--?7*7?--></p>", "<p>Hello, <!--?7*7?-->, <!--?7*7?--></p>", "<p>Hello, <!--?7*7?-->, <!--?7*7?-->, <!--?7*7?--></p>",
+                "<p>Hello, &lt;?7*7?&gt;, &lt;?7*7?&gt;, &lt;?7*7?&gt;</p>",
+                "<p>Hello, &lt;?7*7?>, &lt;?7*7?>, &lt;?7*7?></p>",
+                "<p>Hello, /{7*7}, \{7*7}, \{7*7}</p>"]
+for old, new in zip(old_html_lst, new_html_lst):
+    print(f"Old html: {old}\nNew html: {new}")
+    diffs = get_sanitized_payloads(new, old, "<? ?>", "7*7")
+    print(diffs)
 ########################################
-"""
+
 
