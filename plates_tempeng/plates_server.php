@@ -10,11 +10,13 @@
     if ($_POST) {
         if (isset($_POST["identity_form"])) {
             $name = $_POST["name"];
-            //escape name
-            $name = htmlspecialchars($name);
+            //escape name (htmlspecialchars() not working...)
+            //$name = htmlspecialchars($name, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+            $name = str_replace(["<", ">"], ["[LT]", "[GT]"], $name);
+            //echo "New name: $name";
             $surname = $_POST["surname"];
 
-            /*$new_template = "<h1>User Profile</h1>
+            /*$new_temp\late = "<h1>User Profile</h1>
             <p>Hello, <?php echo \"$name\" ?></p>";
             <?*/
 

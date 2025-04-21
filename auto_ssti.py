@@ -48,11 +48,12 @@ async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, 
         # build the expected html response when payload is used
         expected_response = legit_response.replace(default_input, payload)
         modified_payloads = get_sanitized_payloads(response, expected_response, symbols, operation)
+        # modified_payloads = get_sanitized_payloads_old(response, expected_response, symbols, operation)
 
         # ex: email get changed to "a@a" if the payload is invalid because of a client-side check
         # modified_payloads will contain this value as the old and new html responses are different
-
-        modified_payloads = [mod for mod in modified_payloads if operation in mod]
+        #modified_payloads = [mod for mod in modified_payloads if operation in mod]
+        modified_payloads = [mod for mod in modified_payloads]
 
     return response, modified_payloads
 
@@ -73,20 +74,23 @@ async def main():
     success_payloads_lst = []
     engines_dct = load_engines()
     sanitized_payloads_by_symbols = dict()
-    #for symbols in te_symbols:
-    for symbols in ["<? ?>", "{ }", "{= }"]:
+    for symbols in te_symbols:
+    # for symbols in ["<% %>", "<?= ?>", "{{# }}"]:
         response, sanitized_payloads = await ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, url)
-        if sanitized_payloads:
-            sanitized_payloads_by_symbols[symbols] = sanitized_payloads
         eng_name = check_te_in_response(response, engines_dct)
+
+        eng_name = ""  # PROBLEM: a@a is present in the sanitized payloads list!
         if eng_name != "":
-            print(f"\nTemplate engine '{eng_name}' found in the response! ")
+            print(f"\nTemplate engine '{eng_name}' found in the response!")
             # retrieve the symbols recognized by the engine
             eng_symbols = load_symbols_by_engine(eng_name)
             for tags in eng_symbols:
                 if tags not in success_symbols_lst:
                     await ssti_attack(success_symbols_lst, success_payloads_lst, tags, page, url)
             break
+        # no need to consider sanitized payloads in a response with exceptions
+        elif sanitized_payloads:
+            sanitized_payloads_by_symbols[symbols] = sanitized_payloads
 
     await browser.close()
 
@@ -109,11 +113,13 @@ async def main():
 if __name__ == "__main__":
     ### USE THIS PIECE OF CODE IF YOU ONLY EXECUTE auto_ssti.py ###
 
-    servers_lst = ["latte_tempeng/latte_server.php", "spitfire_tempeng/spitfire_server.py", "plates_tempeng/plates_server.php", ]
+    servers_lst = ["spitfire_tempeng/spitfire_server.py", "plates_tempeng/plates_server.php", "latte_tempeng/latte_server.php"]
 
     for server in servers_lst:
         choice = ""
         server_process = launch_server(server)  # only needed to automatically launch servers from here
+
+        print(f"SCANNING URL '{server}' ...")
         asyncio.run(main())
         shutdown_server(server_process)
 

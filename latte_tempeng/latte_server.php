@@ -33,7 +33,8 @@
             $textarea = $_POST["w3review"];
 
             // escaping search
-            $search = htmlspecialchars($search);
+            //$search = htmlspecialchars($search);
+            $search = str_replace(["<", ">"], ["[LT]", "[GT]"], $search);
 
             $new_template = "<h1>User Profile</h1>
                                 <p>Hello, $name </p>
@@ -81,7 +82,9 @@
         if (isset($_GET["title"])) {
             //Link 1
             $title = $_GET["title"];
-            $message = $_GET["message"];
+            $message = "";
+            if (isset($_GET["message"]))
+                $message = $_GET["message"];
             $link_template = "<h1>Value of query parameter in the first link </h1>
                                 <p>Link1 query1: $title</p>
                                 <p>Link1 query 2: $message</p>";
@@ -91,7 +94,9 @@
         else if (isset($_GET["greeting"])) {
             // Link 2
             $greeting = $_GET["greeting"];
-            $clap = $_GET["clap"];
+            $clap = "";
+            if (isset($_GET["clap"]))
+                $clap = $_GET["clap"];
             $link_template = "<h1>Value of query parameter in the second link </h1>
                                 <p>Link2 query1: $greeting</p>
                                 <p>Link2 query2: $clap</p>";
@@ -101,7 +106,9 @@
         else if (isset($_GET["query1"])) {
             //button JS id=fullnav
             $query1 = $_GET["query1"];
-            $query2 = $_GET["query2"];
+            $query2 = "";
+            if (isset($_GET["query2"]))
+                $query2 = $_GET["query2"];
             $fullnav_btn_template = "<h1>Button JS fullnav clicked! </h1>
                                 <p>JSbtn query1: $query1</p>
                                 <p>JSbtn query2: $query2</p>";

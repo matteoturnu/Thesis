@@ -1,4 +1,5 @@
 import asyncio
+import difflib
 import random
 import re
 import string
@@ -59,87 +60,37 @@ def on_link_request(result, obj):
 
     return lambda request: asyncio.create_task(is_request(request))
 
-"""
-def get_html_changes(new_html, old_html):
-    # NOTE: THIS ALGORITHM WORK ONLY WHEN SANITIZATION IS APPLIED TO BOTH 
-    # THE OPENING AND CLOSING TAGS (ex: <? ?>, {= }, ...)
-    import difflib
-    diff = difflib.ndiff(old_html.splitlines(), new_html.splitlines())
-    changes = [line.strip("-+ ") for line in diff if line.startswith('+ ') or line.startswith('- ')]
 
-    diffs = []
-    for i in range(0, len(changes), 2):
-        new_chars_idx = []
-        old_line = changes[i]
-        new_line = changes[i + 1]
-        matcher = difflib.SequenceMatcher(None, old_line, new_line)
-        for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-            if tag in ('replace', 'insert'):
-                new_chars_idx.append([j1, j2])
-
-        prev_end = 0
-        for j in range(0, len(new_chars_idx) - 1, 2):
-            payload_start = new_chars_idx[j][0]
-            payload_end = new_chars_idx[j + 1][1]
-
-            while payload_start > prev_end and new_line[payload_start - 1] not in string.whitespace:
-                if new_line[payload_start - 1].isalnum() or new_line[payload_start - 1] == '>':
-                    break
-                payload_start -= 1
-            prev_end = payload_end
-
-            if j + 2 > len(new_chars_idx) - 1:
-                start_next = len(new_line)
-            else:
-                start_next = new_chars_idx[j + 2][0]
-            while payload_end < start_next and new_line[payload_end] not in string.whitespace:
-                if new_line[payload_end].isalnum() or new_line[payload_end] == '<':
-                    break
-                payload_end += 1
-
-            changed_payload = new_line[payload_start:payload_end]
-            if changed_payload and changed_payload not in diffs:
-                is_contained = False
-                for idx, d in enumerate(diffs):
-                    if changed_payload in d or d in changed_payload:
-                        # if d is in changed_payload do nothing
-                        is_contained = True
-                    if changed_payload in d:
-                        diffs[idx] = changed_payload
-
-                if not is_contained:
-                    diffs.append(changed_payload)
-
-    return diffs
-"""
 
 def get_sanitized_payloads(new_html, old_html, symbols, operation):
-    # NOTE: THIS VERSION WORKS FOR 2 CASES: OPENING DELIMITER SANITIZED OR BOTH DELIMITERS SANITIZED
-    # NOT WORKING WHEN ONLY THE CLOSING DELIMITER IS SANITIZED
-    # e.g., works for: <?7*7?> --> &lt;?7*7?>, and <?7*7?> --> &lt;?7*7?&gt;
-    # IT DOESN'T WORK IF CHARACTERS ARE DELETED IN THE SANITIZED VERSION
-
+    # HYPOTHESIS: operation is never sanitized (ex: no 7/*7 or anything similar) but payload is
     # ENHANCEMENT: use a blacklist of symbols for which stopping scan
     # ex: "," and "!" for forward scanning
+    # CHECK IF IT WORKS WITH ONLY OPENING DELIMITERS IN THE PAYLOAD! (ex: "$7*7", "#7*7"...)
 
-    #
-    import difflib
-    diff = difflib.ndiff(old_html.splitlines(), new_html.splitlines())
-    changes = [line.strip("-+ ") for line in diff if line.startswith('+ ') or line.startswith('- ')]
+    changes_minus = []
+    changes_plus = []
+    diff_iter = difflib.ndiff(old_html.splitlines(), new_html.splitlines())
+    for line in diff_iter:
+        if line.startswith('+ '):
+            changes_plus.append(line.strip("+ "))
+        elif line.startswith('- '):
+            changes_minus.append(line.strip("- "))
 
     diffs = []
-    # i related to the last element saved in diffs
-    # i refers always to the old element in the html response
     last_i_saved = -1
-    for i in range(0, len(changes), 2):
+    for i in range(0, len(changes_minus)):
         new_chars_idx = []
         changed_payload = ""
 
-        old_line = changes[i]
-        new_line = changes[i + 1]
+        old_line = changes_minus[i]
+        new_line = changes_plus[i]
         matcher = difflib.SequenceMatcher(None, old_line, new_line)
+        if operation not in new_line or operation not in old_line:
+            continue
         for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-            if tag in ('replace', 'insert'):
+            # if tag in ('replace', 'insert'):
+            if tag in ('replace', 'insert', 'delete'):
                 new_chars_idx.append([j1, j2])
 
         prev_end = 0
@@ -164,7 +115,7 @@ def get_sanitized_payloads(new_html, old_html, symbols, operation):
                     break
                 if delimiter_end != "" and (payload_start - del_end_len) > prev_end:
                     # look for payload delimiters
-                    if new_line[payload_start-del_end_len-1:payload_start-1] == delimiter_end:
+                    if new_line[payload_start - del_end_len - 1:payload_start - 1] == delimiter_end:
                         # met ending delimiters of a previous payload, so stop scanning backwards
                         break
 
@@ -175,13 +126,13 @@ def get_sanitized_payloads(new_html, old_html, symbols, operation):
             if j + 1 > len(new_chars_idx) - 1:
                 start_next = len(new_line)
             else:
-                start_next = new_chars_idx[j+1][0]
+                start_next = new_chars_idx[j + 1][0]
             while payload_end < start_next and new_line[payload_end] not in string.whitespace:
                 if new_line[payload_end] == '<' or new_line[payload_end] == ',':
                     break
                 if delimiter_end != "" and (payload_end + del_start_len) < start_next:
                     # look for payload delimiters
-                    if new_line[payload_end:payload_end+del_start_len] == delimiter_end:
+                    if new_line[payload_end:payload_end + del_start_len] == delimiter_end:
                         # met ending delimiters of the current payload, so add them to payload and exit
                         payload_end += del_end_len
                         break
@@ -201,7 +152,7 @@ def get_sanitized_payloads(new_html, old_html, symbols, operation):
                         changed_payload = diffs[-1] + changed_payload[max_overlap:]
                         merged_payloads = True
 
-                if changed_payload not in diff:
+                if changed_payload not in diffs:
                     if merged_payloads:
                         diffs[-1] = changed_payload
                         last_i_saved = i
@@ -210,46 +161,8 @@ def get_sanitized_payloads(new_html, old_html, symbols, operation):
                         diffs.append(changed_payload)
                         last_i_saved = i
 
-                """elif merged_payloads:
-                    diffs.pop()
-                    """
-
-
-
-        """
-        for j in range(0, len(new_chars_idx), 2):
-            payload_start = new_chars_idx[j][0]
-
-            if j+1 < len(new_chars_idx):
-                payload_end = new_chars_idx[j+1][1]
-            else:
-                payload_end = new_chars_idx[j][1]
-                use_prev_j = True
-
-            while payload_start > prev_end and new_line[payload_start - 1] not in string.whitespace:
-                if new_line[payload_start - 1].isalnum() or new_line[payload_start - 1] == '>':
-                    break
-                payload_start -= 1
-            prev_end = payload_end
-
-            
-            if j + 2 > len(new_chars_idx) - 1:
-                start_next = len(new_line)
-            else:
-                start_next = new_chars_idx[j+2][0]
-            while payload_end < start_next and new_line[payload_end] not in string.whitespace:
-                if use_prev_j:
-                    # need to take the rest of the line content from "end" to the actual payload end
-                    if new_line[payload_end] == '<':
-                        break
-                else:
-                    if new_line[payload_end].isalnum() or new_line[payload_end] == '<':
-                        break
-                payload_end += 1
-
-            """
-
-            
+                # elif merged_payloads:
+                # diffs.pop()
 
     return diffs
 
@@ -310,7 +223,8 @@ async def exec_payload_in_inputs(page, button_elem, payload, url):
     if dom_reloaded.done() and dom_reloaded.result() is True:
         await page.setRequestInterception(False)
         # submit button
-        html_resp = await page.content()
+        # NOTE: page.content() automatically escapes html. Can't say when server-side sanitization occur
+        html_resp =  html.unescape(await page.content())
         # print("Submit button")
 
     elif dom_reloaded.done():  # and if it's False
@@ -321,7 +235,7 @@ async def exec_payload_in_inputs(page, button_elem, payload, url):
             new_url = edit_url_query(req_url, payload)
             await handler_obj["request_obj"].continue_({"url": new_url})
             await page.setRequestInterception(False)
-            html_resp = await page.content()
+            html_resp = html.unescape(await page.content())
         else:
             await handler_obj["request_obj"].continue_()
             await page.setRequestInterception(False)
@@ -347,20 +261,6 @@ def edit_url_query(url, query):
 
 
 async def exec_payload_in_link(page, link_elem, payload, url):
-    """
-    href = await page.evaluate("(el) => el.href", link_elem)
-    # discard links without query parameters
-    if "?" not in href:
-        return ""
-
-    new_href = edit_url_query(href, payload)
-    await page.evaluate("(el, new_value) => el.href=new_value", link_elem, new_href)
-    await link_elem.click()
-
-    await page.waitForNavigation({'waitUntil': 'domcontentloaded'})
-    html_resp = await page.content()
-    """
-
     html_resp = ""
     result = asyncio.Future()
     handler_obj = {"request_obj": None}
@@ -387,7 +287,7 @@ async def exec_payload_in_link(page, link_elem, payload, url):
             # let the request continue but with a new url
             await handler_obj["request_obj"].continue_({"url": new_url})
             await page.setRequestInterception(False)
-            html_resp = await page.content()
+            html_resp = html.unescape(await page.content())
         else:
             await handler_obj["request_obj"].continue_()
             await page.setRequestInterception(False)
@@ -465,18 +365,34 @@ def store_symbols(symbols_lst, payloads_lst, new_symbols, new_payload):
 
 
 ############### TEST ##################
-old_html_lst = ["<p>Hello, <?7*7?></p>", "<p>Hello, <?7*7?>, <?7*7?></p>", "<p>Hello, <?7*7?>, <?7*7?>, <?7*7?></p>",
-                "<p>Hello, <?7*7?>, <?7*7?>, <?7*7?></p>",
-                "<p>Hello, <?7*7?>, <?7*7?>, <?7*7?></p>",
-                "<p>Hello, ${7*7}, ${7*7}, ${7*7}</p>"]
-new_html_lst = ["<p>Hello, <!--?7*7?--></p>", "<p>Hello, <!--?7*7?-->, <!--?7*7?--></p>", "<p>Hello, <!--?7*7?-->, <!--?7*7?-->, <!--?7*7?--></p>",
-                "<p>Hello, &lt;?7*7?&gt;, &lt;?7*7?&gt;, &lt;?7*7?&gt;</p>",
-                "<p>Hello, &lt;?7*7?>, &lt;?7*7?>, &lt;?7*7?></p>",
-                "<p>Hello, /{7*7}, \{7*7}, \{7*7}</p>"]
-for old, new in zip(old_html_lst, new_html_lst):
-    print(f"Old html: {old}\nNew html: {new}")
-    diffs = get_sanitized_payloads(new, old, "<? ?>", "7*7")
-    print(diffs)
+if __name__ == "__main__":
+    """
+    old_html_lst = ["<p>Hello, <?7*7?></p>", "<p>Hello, <?7*7?>, <?7*7?></p>", "<p>Hello, <?7*7?>, <?7*7?>, <?7*7?></p>",
+                    "<p>Hello, <?7*7?>, <?7*7?>, <?7*7?></p>",
+                    "<p>Hello, <?7*7?>, <?7*7?>, <?7*7?></p>",
+                    "<p>Hello, ${7*7}, ${7*7}, ${7*7}</p>",
+                    "<p>Hello, ${7*7}</p>",
+                    "<p>Hello, ${7*7}, ${7*7}</p>",
+                    "<p>Hello, ${7*7}, ${7*7}, ${7*7}</p>",
+                    "<p>Hello, ${7*7}, ${7*7}, ${7*7}</p>"
+                    ]
+    new_html_lst = ["<p>Hello, <!--?7*7?--></p>", "<p>Hello, <!--?7*7?-->, <!--?7*7?--></p>", "<p>Hello, <!--?7*7?-->, <!--?7*7?-->, <!--?7*7?--></p>",
+                    "<p>Hello, &lt;?7*7?&gt;, &lt;?7*7?&gt;, &lt;?7*7?&gt;</p>",
+                    "<p>Hello, &lt;?7*7?>, &lt;?7*7?>, &lt;?7*7?></p>",
+                    "<p>Hello, /{7*7}, \{7*7}, \{7*7}</p>",
+                    "<p>Hello, {7*7}</p>",
+                    "<p>Hello, {7*7}, {7*7}</p>",
+                    "<p>Hello, {7*7}, {7*7}, {7*7}</p>",
+                    "<p>Hello, 7*7, 7*7, 7*7</p>"
+                    ]
+    symbols = ["<? ?>", "<? ?>", "<? ?>", "<? ?>", "<? ?>", "${ }", "${ }", "${ }", "${ }", "${ }"]
+
+    for old, new, symbols in zip(old_html_lst, new_html_lst, symbols):
+        print(f"Old html: {old}\nNew html: {new}\nSymbols: {symbols}")
+        diffs = get_sanitized_payloads(new, old, symbols, "7*7")
+        print(diffs)
 ########################################
+"""
+    print(get_sanitized_payloads("<p>Hello, 7*7, 7*7, 7*7</p>", "<p>Hello, ${7*7}, ${7*7}, ${7*7}</p>", "${ }", "7*7"))
 
 
