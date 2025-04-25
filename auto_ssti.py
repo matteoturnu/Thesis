@@ -75,7 +75,7 @@ async def main():
     engines_dct = load_engines()
     sanitized_payloads_by_symbols = dict()
     for symbols in te_symbols:
-    # for symbols in ["<% %>", "<?= ?>", "{{# }}"]:
+    # for symbols in ["<% %>", "{ }", "<?= ?>"]:
         response, sanitized_payloads = await ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, url)
         eng_name = check_te_in_response(response, engines_dct)
 
@@ -113,14 +113,14 @@ async def main():
 if __name__ == "__main__":
     ### USE THIS PIECE OF CODE IF YOU ONLY EXECUTE auto_ssti.py ###
 
-    servers_lst = ["spitfire_tempeng/spitfire_server.py", "plates_tempeng/plates_server.php", "latte_tempeng/latte_server.php"]
+    servers_lst = ["latte_tempeng/latte_server.php", "spitfire_tempeng/spitfire_server.py", "plates_tempeng/plates_server.php"]
 
     for server in servers_lst:
         choice = ""
         server_process = launch_server(server)  # only needed to automatically launch servers from here
 
         print(f"SCANNING URL '{server}' ...")
-        asyncio.run(main())
+        asyncio.run(main(), debug=True)
         shutdown_server(server_process)
 
         # server_process.wait()

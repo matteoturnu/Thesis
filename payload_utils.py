@@ -3,6 +3,7 @@ import difflib
 import random
 import re
 import string
+import urllib.parse
 
 from bs4 import BeautifulSoup
 import html
@@ -61,6 +62,40 @@ def on_link_request(result, obj):
     return lambda request: asyncio.create_task(is_request(request))
 
 
+def get_response_text(resp_future, resp_obj):
+    async def on_response(response):
+        if not resp_future.done():
+            try:
+                html_txt = await response.text()
+                resp_obj["response"] = html_txt
+                resp_future.set_result(True)
+                #print("[on_response] Response returned!")
+            except asyncio.InvalidStateError:
+                print("[on_response] InvalidStateError")
+            except Exception as e:
+                print("[on_response] Error capturing response: ", e)
+                resp_future.set_result(False)
+            # html_txt = await response.text()
+            # resp_obj["response"] = html_txt
+
+    return lambda response: asyncio.create_task(on_response(response))
+
+
+"""
+def get_response_text(future, obj):
+    async def on_response(response):
+        #if not future.done() and "latte.php" in response.url:
+        if not future.done():
+            try:
+                body = await response.text()
+                obj["response"] = body  # Store the actual text, not the Response object
+                future.set_result(True)
+            except Exception as e:
+                print("Error getting response body:", e)
+                future.set_exception(e)
+    return lambda response: asyncio.create_task(on_response(response))
+"""
+
 
 def get_sanitized_payloads(new_html, old_html, symbols, operation):
     # HYPOTHESIS: operation is never sanitized (ex: no 7/*7 or anything similar) but payload is
@@ -81,10 +116,14 @@ def get_sanitized_payloads(new_html, old_html, symbols, operation):
     last_i_saved = -1
     for i in range(0, len(changes_minus)):
         new_chars_idx = []
-        changed_payload = ""
-
+        #changed_payload = ""
         old_line = changes_minus[i]
-        new_line = changes_plus[i]
+        try:
+            new_line = changes_plus[i]
+        except IndexError as e:
+            print(e)
+            print(f"changes_minus: \n{changes_minus}, \nchanges_plus: \n{changes_plus}")
+            exit()
         matcher = difflib.SequenceMatcher(None, old_line, new_line)
         if operation not in new_line or operation not in old_line:
             continue
@@ -167,7 +206,6 @@ def get_sanitized_payloads(new_html, old_html, symbols, operation):
     return diffs
 
 
-
 async def exec_payload_in_inputs(page, button_elem, payload, url):
     # find the input text areas
     input_type_lst = await page.querySelectorAll('input[type]:not([type="reset"])'
@@ -202,13 +240,20 @@ async def exec_payload_in_inputs(page, button_elem, payload, url):
                 print("The email is invalid.")
                 await page.evaluate("(el, value) => el.value = value", input_element, "a@a")
 
+
     html_resp = ""
+
     dom_reloaded = asyncio.Future()
     handler_obj = {"request_obj": None}
-
     req_handler = on_btn_request(dom_reloaded, handler_obj)
     await page.setRequestInterception(True)
     page.on("request", req_handler)
+
+    resp_future = asyncio.Future()
+    resp_obj = {"response": None}
+    resp_handler = get_response_text(resp_future, resp_obj)
+    # page.on("response", resp_handler)
+    # page.once("response", resp_handler)
 
     await button_elem.click()
     try:
@@ -221,21 +266,41 @@ async def exec_payload_in_inputs(page, button_elem, payload, url):
 
     page.remove_listener("request", req_handler)
     if dom_reloaded.done() and dom_reloaded.result() is True:
+        page.once("response", resp_handler)
         await page.setRequestInterception(False)
         # submit button
         # NOTE: page.content() automatically escapes html. Can't say when server-side sanitization occur
-        html_resp =  html.unescape(await page.content())
+        # html_resp = html.unescape(await page.content())
+        try:
+            await asyncio.wait_for(resp_future, 3)
+        except asyncio.TimeoutError:
+            print("[TimeoutError] No response obtained after 3 seconds.")
+            resp_future = asyncio.Future()
+
+        if resp_future.done() and resp_obj["response"]:
+            # html_resp = await resp_obj["response"].text()
+            html_resp = resp_obj["response"]
         # print("Submit button")
 
     elif dom_reloaded.done():  # and if it's False
         # ajax or js-nav button
         req_url = handler_obj["request_obj"].url
         if "?" in req_url:
+            page.once("response", resp_handler)
             # new url obtained
             new_url = edit_url_query(req_url, payload)
             await handler_obj["request_obj"].continue_({"url": new_url})
             await page.setRequestInterception(False)
-            html_resp = html.unescape(await page.content())
+            # html_resp = html.unescape(await page.content())
+            try:
+                await asyncio.wait_for(resp_future, 3)
+            except asyncio.TimeoutError:
+                print("[TimeoutError] No response obtained after 3 seconds.")
+                resp_future = asyncio.Future()
+
+            if resp_future.done() and resp_obj["response"]:
+                # html_resp = await resp_obj["response"].text()
+                html_resp = resp_obj["response"]
         else:
             await handler_obj["request_obj"].continue_()
             await page.setRequestInterception(False)
@@ -243,6 +308,7 @@ async def exec_payload_in_inputs(page, button_elem, payload, url):
     else:
         await page.setRequestInterception(False)
 
+    # page.remove_listener("response", resp_handler)
     await page.goto(url)
 
     return html_resp
@@ -256,18 +322,26 @@ def edit_url_query(url, query):
         key = key_value.split("=")[0]
         new_queries += f"{key}={query}&"
 
-    new_url = url + new_queries[:-1]  # delete last "&"
+    # delete last "&" in the query
+    enc_queries = urllib.parse.quote(new_queries[:-1], safe="*?=&")
+    new_url = url + enc_queries
     return new_url
 
 
 async def exec_payload_in_link(page, link_elem, payload, url):
     html_resp = ""
+
     result = asyncio.Future()
     handler_obj = {"request_obj": None}
-
     req_handler = on_link_request(result, handler_obj)
     await page.setRequestInterception(True)
     page.on("request", req_handler)
+
+    resp_future = asyncio.Future()
+    resp_obj = {"response": None}
+    resp_handler = get_response_text(resp_future, resp_obj)
+    # page.on("response", resp_handler)
+    # page.once("response", resp_handler)
 
     await link_elem.click()
     try:
@@ -277,21 +351,37 @@ async def exec_payload_in_link(page, link_elem, payload, url):
         # done() happens when the task is completed or if it raised an exception
         # reset variable
         result = asyncio.Future()
+        # resp_future = asyncio.Future()
 
     page.remove_listener("request", req_handler)
     if result.done():
+        page.once("response", resp_handler)
         req_url = handler_obj["request_obj"].url
         if "?" in req_url:
             # new url obtained
             new_url = edit_url_query(req_url, payload)
             # let the request continue but with a new url
             await handler_obj["request_obj"].continue_({"url": new_url})
+            #print("Before setRequestInterception(False)")
             await page.setRequestInterception(False)
-            html_resp = html.unescape(await page.content())
+            #print("AFTER setRequestInterception(False)")
+            try:
+                await asyncio.wait_for(resp_future, 3)
+                #print("AFTER asyncio.wait_for()")
+            except asyncio.TimeoutError:
+                #print("[TimeoutError] No response obtained after 3 seconds.")
+                resp_future = asyncio.Future()
+
+            # html_resp = html.unescape(await page.content())
+            if resp_future.done() and resp_obj["response"]:
+                #print("Before await resp_obj.text()!")
+                # html_resp = await resp_obj["response"].text()
+                html_resp = resp_obj["response"]
         else:
             await handler_obj["request_obj"].continue_()
             await page.setRequestInterception(False)
 
+    # page.remove_listener("response", resp_handler)
     await page.goto(url)
     return html_resp
 
@@ -311,7 +401,7 @@ async def inject_payload(page, url, payload):
     links_lst = await page.querySelectorAll("a[href]")
     for link_idx in range(len(links_lst)):
         link_elem = links_lst[link_idx]
-        # print("Current link: ", await page.evaluate('(link)=>link.id', link_elem))
+        #print("Current link: ", await page.evaluate('(link)=>link.id', link_elem))
         current_html = await exec_payload_in_link(page, link_elem, payload, url)
         html_resp += current_html
         links_lst = await page.querySelectorAll("a[href]")
@@ -322,12 +412,19 @@ async def inject_payload(page, url, payload):
 def validate_injection(op_res, html_resp):
     success = False
     responses_lst = list()
-    res_matches = None
     res_matches = list(re.finditer(re.escape(op_res), html_resp))
     if res_matches:
         success = True
+        prev_end = 0
         for match in res_matches:
-            start, end = max(0, match.start() - 20), min(len(html_resp), match.end() + 20)
+            start, end = match.start(), match.end()
+            while start > prev_end and html_resp[start - 1] != ">":
+                start -= 1
+            while end < len(html_resp) and html_resp[end] != "<":
+                end += 1
+            prev_end = end
+
+            # start, end = max(0, match.start() - 20), min(len(html_resp), match.end() + 20)
             # print(f"Match: {html_resp[start:end]}")
             responses_lst.append(html_resp[start:end])
 
@@ -393,6 +490,4 @@ if __name__ == "__main__":
         print(diffs)
 ########################################
 """
-    print(get_sanitized_payloads("<p>Hello, 7*7, 7*7, 7*7</p>", "<p>Hello, ${7*7}, ${7*7}, ${7*7}</p>", "${ }", "7*7"))
-
-
+    # print(get_sanitized_payloads("<p>Hello, 7*7, 7*7</p>", "<p>Hello, $7*7, $7*7</p>", "$", "7*7"))

@@ -33,8 +33,7 @@
             $textarea = $_POST["w3review"];
 
             // escaping search
-            //$search = htmlspecialchars($search);
-            $search = str_replace(["<", ">"], ["[LT]", "[GT]"], $search);
+            $search = htmlspecialchars($search);
 
             $new_template = "<h1>User Profile</h1>
                                 <p>Hello, $name </p>
