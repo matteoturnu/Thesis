@@ -69,39 +69,19 @@ def get_response_text(resp_future, resp_obj):
                 html_txt = await response.text()
                 resp_obj["response"] = html_txt
                 resp_future.set_result(True)
-                #print("[on_response] Response returned!")
             except asyncio.InvalidStateError:
                 print("[on_response] InvalidStateError")
             except Exception as e:
                 print("[on_response] Error capturing response: ", e)
                 resp_future.set_result(False)
-            # html_txt = await response.text()
-            # resp_obj["response"] = html_txt
 
     return lambda response: asyncio.create_task(on_response(response))
-
-
-"""
-def get_response_text(future, obj):
-    async def on_response(response):
-        #if not future.done() and "latte.php" in response.url:
-        if not future.done():
-            try:
-                body = await response.text()
-                obj["response"] = body  # Store the actual text, not the Response object
-                future.set_result(True)
-            except Exception as e:
-                print("Error getting response body:", e)
-                future.set_exception(e)
-    return lambda response: asyncio.create_task(on_response(response))
-"""
 
 
 def get_sanitized_payloads(new_html, old_html, symbols, operation):
     # HYPOTHESIS: operation is never sanitized (ex: no 7/*7 or anything similar) but payload is
     # ENHANCEMENT: use a blacklist of symbols for which stopping scan
     # ex: "," and "!" for forward scanning
-    # CHECK IF IT WORKS WITH ONLY OPENING DELIMITERS IN THE PAYLOAD! (ex: "$7*7", "#7*7"...)
 
     changes_minus = []
     changes_plus = []
@@ -116,7 +96,6 @@ def get_sanitized_payloads(new_html, old_html, symbols, operation):
     last_i_saved = -1
     for i in range(0, len(changes_minus)):
         new_chars_idx = []
-        #changed_payload = ""
         old_line = changes_minus[i]
         try:
             new_line = changes_plus[i]
@@ -128,7 +107,6 @@ def get_sanitized_payloads(new_html, old_html, symbols, operation):
         if operation not in new_line or operation not in old_line:
             continue
         for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-            # if tag in ('replace', 'insert'):
             if tag in ('replace', 'insert', 'delete'):
                 new_chars_idx.append([j1, j2])
 
@@ -200,9 +178,6 @@ def get_sanitized_payloads(new_html, old_html, symbols, operation):
                         diffs.append(changed_payload)
                         last_i_saved = i
 
-                # elif merged_payloads:
-                # diffs.pop()
-
     return diffs
 
 
@@ -252,8 +227,6 @@ async def exec_payload_in_inputs(page, button_elem, payload, url):
     resp_future = asyncio.Future()
     resp_obj = {"response": None}
     resp_handler = get_response_text(resp_future, resp_obj)
-    # page.on("response", resp_handler)
-    # page.once("response", resp_handler)
 
     await button_elem.click()
     try:
@@ -268,9 +241,6 @@ async def exec_payload_in_inputs(page, button_elem, payload, url):
     if dom_reloaded.done() and dom_reloaded.result() is True:
         page.once("response", resp_handler)
         await page.setRequestInterception(False)
-        # submit button
-        # NOTE: page.content() automatically escapes html. Can't say when server-side sanitization occur
-        # html_resp = html.unescape(await page.content())
         try:
             await asyncio.wait_for(resp_future, 3)
         except asyncio.TimeoutError:
@@ -278,9 +248,7 @@ async def exec_payload_in_inputs(page, button_elem, payload, url):
             resp_future = asyncio.Future()
 
         if resp_future.done() and resp_obj["response"]:
-            # html_resp = await resp_obj["response"].text()
             html_resp = resp_obj["response"]
-        # print("Submit button")
 
     elif dom_reloaded.done():  # and if it's False
         # ajax or js-nav button
@@ -291,7 +259,6 @@ async def exec_payload_in_inputs(page, button_elem, payload, url):
             new_url = edit_url_query(req_url, payload)
             await handler_obj["request_obj"].continue_({"url": new_url})
             await page.setRequestInterception(False)
-            # html_resp = html.unescape(await page.content())
             try:
                 await asyncio.wait_for(resp_future, 3)
             except asyncio.TimeoutError:
@@ -299,7 +266,6 @@ async def exec_payload_in_inputs(page, button_elem, payload, url):
                 resp_future = asyncio.Future()
 
             if resp_future.done() and resp_obj["response"]:
-                # html_resp = await resp_obj["response"].text()
                 html_resp = resp_obj["response"]
         else:
             await handler_obj["request_obj"].continue_()
@@ -308,7 +274,6 @@ async def exec_payload_in_inputs(page, button_elem, payload, url):
     else:
         await page.setRequestInterception(False)
 
-    # page.remove_listener("response", resp_handler)
     await page.goto(url)
 
     return html_resp
@@ -340,8 +305,6 @@ async def exec_payload_in_link(page, link_elem, payload, url):
     resp_future = asyncio.Future()
     resp_obj = {"response": None}
     resp_handler = get_response_text(resp_future, resp_obj)
-    # page.on("response", resp_handler)
-    # page.once("response", resp_handler)
 
     await link_elem.click()
     try:
@@ -351,7 +314,6 @@ async def exec_payload_in_link(page, link_elem, payload, url):
         # done() happens when the task is completed or if it raised an exception
         # reset variable
         result = asyncio.Future()
-        # resp_future = asyncio.Future()
 
     page.remove_listener("request", req_handler)
     if result.done():
@@ -362,26 +324,18 @@ async def exec_payload_in_link(page, link_elem, payload, url):
             new_url = edit_url_query(req_url, payload)
             # let the request continue but with a new url
             await handler_obj["request_obj"].continue_({"url": new_url})
-            #print("Before setRequestInterception(False)")
             await page.setRequestInterception(False)
-            #print("AFTER setRequestInterception(False)")
             try:
                 await asyncio.wait_for(resp_future, 3)
-                #print("AFTER asyncio.wait_for()")
             except asyncio.TimeoutError:
-                #print("[TimeoutError] No response obtained after 3 seconds.")
                 resp_future = asyncio.Future()
 
-            # html_resp = html.unescape(await page.content())
             if resp_future.done() and resp_obj["response"]:
-                #print("Before await resp_obj.text()!")
-                # html_resp = await resp_obj["response"].text()
                 html_resp = resp_obj["response"]
         else:
             await handler_obj["request_obj"].continue_()
             await page.setRequestInterception(False)
 
-    # page.remove_listener("response", resp_handler)
     await page.goto(url)
     return html_resp
 
@@ -401,7 +355,7 @@ async def inject_payload(page, url, payload):
     links_lst = await page.querySelectorAll("a[href]")
     for link_idx in range(len(links_lst)):
         link_elem = links_lst[link_idx]
-        #print("Current link: ", await page.evaluate('(link)=>link.id', link_elem))
+        # print("Current link: ", await page.evaluate('(link)=>link.id', link_elem))
         current_html = await exec_payload_in_link(page, link_elem, payload, url)
         html_resp += current_html
         links_lst = await page.querySelectorAll("a[href]")
