@@ -79,7 +79,7 @@ async def main():
         response, sanitized_payloads = await ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, url)
         eng_name = check_te_in_response(response, engines_dct)
 
-        eng_name = ""  # PROBLEM: a@a is present in the sanitized payloads list!
+        # eng_name = ""  # PROBLEM: a@a is present in the sanitized payloads list!
         if eng_name != "":
             print(f"\nTemplate engine '{eng_name}' found in the response!")
             # retrieve the symbols recognized by the engine
@@ -113,7 +113,7 @@ async def main():
 if __name__ == "__main__":
     ### USE THIS PIECE OF CODE IF YOU ONLY EXECUTE auto_ssti.py ###
 
-    servers_lst = ["latte_tempeng/latte_server.php", "spitfire_tempeng/spitfire_server.py", "plates_tempeng/plates_server.php"]
+    servers_lst = ["latte_tempeng/latte_server.php", "plates_tempeng/plates_server.php", "spitfire_tempeng/spitfire_server.py"]
 
     for server in servers_lst:
         choice = ""

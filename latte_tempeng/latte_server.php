@@ -31,6 +31,7 @@
             $search = $_POST["search"];
             $tel = $_POST["phone_number"];
             $textarea = $_POST["w3review"];
+            $sex = $_POST["sex"];
 
             // escaping search
             $search = htmlspecialchars($search);
@@ -39,6 +40,7 @@
                                 <p>Hello, $name </p>
                                 <p>Your other data: </p>
                                 <p>Surname: $surname </p>
+                                <p>Sex: $sex</p>
                                 <p>Your fav language: $fav_lang </p>
                                 <p>Your vehicles: $vehicle1, $vehicle2, $vehicle3</p>
                                 <p>Password: $password </p>
