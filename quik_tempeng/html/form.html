@@ -1,27 +1,8 @@
-<?php
-
-   if (isset($_POST["identity_form"])) {
-        $name = $_POST["name"];
-        //escape name
-        //$name = htmlspecialchars($name);
-        $surname = $_POST["surname"];
-
-
-        echo "Name: $name; Surname: $surname";
-
-   }
-   else if (isset($_POST["credentials_form"])) {
-        $user = $_POST["username"];
-        $email = $_POST["email"];
-
-        echo "Username: $user; Email: $email";
-   }
-
-?>
 <html>
-  <head><title>Simple PHP server</title></head>
+  <head><title>Quik Server</title></head>
   <body>
-    <h1>Enter your name!</h1>
+    <h1>Quik Server (Python)</h1>
+    <h2>Enter your name!</h2>
     <form action="http://127.0.0.1:8080" method="post">
         <input type="text" name="name" placeholder="Your Name"> <br><br>
         <input type="text" name="surname" placeholder="Your Surname"> <br><br>

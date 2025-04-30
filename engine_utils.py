@@ -21,15 +21,39 @@ def find_template_engines(success_symbols):
     engines_by_symbols = {}
     simple_dict = True
 
+    # load all the existing engines based on the successful symbols
+    # shape: {"<eng_name>": {"symbols": <symbols>, "language": <lang>}, ...}
+    for symbols in success_symbols:
+        include_te = True
+        for te, lang in te_symbols[symbols].items():
+
+            for syms, engines in te_symbols.items():
+                if syms == symbols:
+                    continue
+                if te in engines and syms not in success_symbols:
+                    # te is compatible with symbols found to be non-useful for injection
+                    include_te = False
+                    break
+
+            if include_te:
+                if te not in engines_by_symbols:
+                    engines_by_symbols[te] = {"symbols": {symbols}, "language": lang}
+                else:
+                    engines_by_symbols[te]["symbols"].add(symbols)
+
+    """
     for symbols in success_symbols:
         for te, lang in te_symbols[symbols].items():
             if te not in engines_by_symbols:
                 engines_by_symbols[te] = {"symbols": {symbols}, "language": lang}
             else:
                 engines_by_symbols[te]["symbols"].add(symbols)
+    """
+
 
     unique_engines = set(engines_by_symbols.keys())
     for eng in unique_engines:
+        # check which engines support ALL the successful symbols found
         if len(engines_by_symbols[eng]["symbols"]) == len(success_symbols):
             target_engines[eng] = engines_by_symbols[eng]["language"]
 
@@ -42,7 +66,8 @@ def find_template_engines(success_symbols):
             if len(engines_by_symbols[eng]["symbols"]) == max_n_symbols:
                 possible_engines[eng] = {"symbols": engines_by_symbols[eng]["symbols"],
                                          "language": engines_by_symbols[eng]["language"]}
-        return simple_dict, possible_engines,
+        return simple_dict, possible_engines
+
     return simple_dict, target_engines
 
 

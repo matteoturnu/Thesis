@@ -11,10 +11,37 @@ from pyppeteer import launch
 from te_symbols import te_symbols
 import subprocess
 import os
+from bs4 import BeautifulSoup
 
 from server_utils import *
 from payload_utils import *
 from engine_utils import *
+
+
+def check_if_exception(actual_resp, exp_resp, delimiters):
+    changes_minus = []
+    changes_plus = []
+    diff_iter = difflib.ndiff(exp_resp.splitlines(), actual_resp.splitlines())
+    for line in diff_iter:
+        if line.startswith('+ '):
+            changes_plus.append(line.strip("+ "))
+        elif line.startswith('- '):
+            changes_minus.append(line.strip("- "))
+
+    if len(changes_minus) != len(changes_plus):
+        return True
+
+    for exp, actual in zip(changes_minus, changes_plus):
+        delimiter_start = delimiters.split(" ")[0]
+        idx_end = exp.index(delimiter_start)
+        exp_substr = exp[:idx_end]
+        if exp_substr not in actual:
+            return True
+
+    return False
+
+
+
 
 
 
@@ -45,14 +72,21 @@ async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, 
         default_input = "abcdefghijklmno"
         legit_response = await inject_payload(page, url, default_input)
 
+
+
         # build the expected html response when payload is used
         expected_response = legit_response.replace(default_input, payload)
+        # static_html = legit_response.replace(default_input, "")
+        exception = check_if_exception(response, expected_response, symbols)
+        if exception:
+            print("EXCEPTION FOUND.", response)
+            return response, []
+
         modified_payloads = get_sanitized_payloads(response, expected_response, symbols, operation)
-        # modified_payloads = get_sanitized_payloads_old(response, expected_response, symbols, operation)
 
         # ex: email get changed to "a@a" if the payload is invalid because of a client-side check
         # modified_payloads will contain this value as the old and new html responses are different
-        #modified_payloads = [mod for mod in modified_payloads if operation in mod]
+        # modified_payloads = [mod for mod in modified_payloads if operation in mod]
         modified_payloads = [mod for mod in modified_payloads]
 
     return response, modified_payloads
@@ -63,7 +97,7 @@ async def main():
     # wait until the server is ready to send responses
     await check_server_ready(url)
     # launch browser without GUI
-    browser = await launch({"headless": False})
+    browser = await launch({"headless": True})
     page = await browser.newPage()
 
     print("\n-----------------------")
@@ -75,7 +109,7 @@ async def main():
     engines_dct = load_engines()
     sanitized_payloads_by_symbols = dict()
     for symbols in te_symbols:
-    # for symbols in ["<% %>", "{ }", "<?= ?>"]:
+    # for symbols in ["$ ", "<% %>", "{ }"]:
         response, sanitized_payloads = await ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, url)
         eng_name = check_te_in_response(response, engines_dct)
 
@@ -86,6 +120,7 @@ async def main():
             eng_symbols = load_symbols_by_engine(eng_name)
             for tags in eng_symbols:
                 if tags not in success_symbols_lst:
+                    # NEED TO OBTAIN SANITIZED PAYLOADS HERE TOO!
                     await ssti_attack(success_symbols_lst, success_payloads_lst, tags, page, url)
             break
         # no need to consider sanitized payloads in a response with exceptions
@@ -113,7 +148,8 @@ async def main():
 if __name__ == "__main__":
     ### USE THIS PIECE OF CODE IF YOU ONLY EXECUTE auto_ssti.py ###
 
-    servers_lst = ["latte_tempeng/latte_server.php", "plates_tempeng/plates_server.php", "spitfire_tempeng/spitfire_server.py"]
+    servers_lst = ["spitfire_tempeng/spitfire_server.py", "evoque_tempeng/server.py", "quik_tempeng/server.py", "latte_tempeng/latte_server.php",
+                   "plates_tempeng/plates_server.php"]
 
     for server in servers_lst:
         choice = ""

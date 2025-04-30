@@ -24,12 +24,19 @@ def create_payload(symbols):
     # generate random numbers for the payload product
     num_1, num_2, _ = generate_numbers_for_product()
     operation = f"{num_1}*{num_2}"
+    """
     if " " in symbols:
         # replace the space with the actual operation
         payload = symbols.replace(" ", operation)
     else:
         # payload = "#set $num=7*7#$num"
         payload = symbols + operation
+    """
+    if " " in symbols:
+        payload = symbols.replace(" ", operation)
+    else:
+        print("No place to insert payload operation. Exiting...")
+        exit()
     # in the future, return only the payload
     return payload, operation
 
@@ -146,12 +153,14 @@ def get_sanitized_payloads(new_html, old_html, symbols, operation):
 
     changes_minus = []
     changes_plus = []
+    static_html = []
     diff_iter = difflib.ndiff(old_html.splitlines(), new_html.splitlines())
     for line in diff_iter:
         if line.startswith('+ '):
             changes_plus.append(line.strip("+ "))
         elif line.startswith('- '):
             changes_minus.append(line.strip("- "))
+
 
     diffs = []
     last_i_saved = -1

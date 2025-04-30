@@ -1,0 +1,90 @@
+import os.path
+import sys
+
+# sys.path.append("/")
+# from template import Template
+from evoque.template import Template
+"""
+domain = os.path.join(os.path.abspath("."), "templates")
+print(domain)
+name = "${7*7}"
+template = "Hello, %s!" % name
+tpl = Template(domain=domain, name="", src=template, from_string=True)
+print(tpl.evoque({}))
+"""
+
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib.parse import urlparse, parse_qs
+
+class MyHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        # Parse URL parameters
+        query = urlparse(self.path).query
+        params = parse_qs(query)
+        name = params.get("name", [""])[0]
+        print("Name parameter: ", name)
+
+        try:
+            # Render the template
+            if name != "":
+                template_string = "<h1>Welcome, %s</h1>" % name
+                response = Template(domain=domain, name="", src=template_string, from_string=True).evoque({})
+            else:
+                response = Template(domain, "form.html").evoque({})
+        except Exception as e:
+            response = f"<h1>Internal server error</h1><p>{str(e)}</p>"
+
+        # Send response headers
+        self.send_response(200)
+        self.send_header("Content-type", "text/html")
+        self.end_headers()
+        # Send the rendered HTML
+        self.wfile.write(response.encode("utf-8"))
+
+    def do_POST(self):
+        content_length = int(self.headers.get('Content-Length', 0))
+        # Read the POST body data
+        post_data = self.rfile.read(content_length).decode('utf-8')
+
+        # Parse form data
+        params = parse_qs(post_data)
+
+        template_string = ""
+        if params.get("identity_form"):
+            name = params.get("name", [""])[0]  # Default to empty string if missing
+            surname = params.get("surname", [""])[0]
+            print(f"Name - Username: {name} - {surname}")
+
+            template_string = "<h1>Welcome, %s</h1>" % name
+            template_string += "<p style=\"font-size:20px;\">Your surname is: %s </p>" % surname
+
+        if params.get("credentials_form"):
+            username = params.get("username", [""])[0]  # Default to empty string if missing
+            email = params.get("email", [""])[0]
+            print(f"Username - email: {username} - {email}")
+
+            template_string = "<h1>Welcome, %s!</h1>" % username
+            template_string += "<p style=\"font-size:20px;\">Your email is: %s </p>" % email
+
+        try:
+            response = Template(domain=domain, name="", src=template_string, from_string=True).evoque({})
+        except Exception as e:
+            response = f"<h1>Internal server error</h1><p>{str(e)}</p>"
+
+        # Send Response
+        self.send_response(200)
+        self.send_header("Content-type", "text/html")
+        self.end_headers()
+        self.wfile.write(response.encode("utf-8"))
+
+
+# Set up the server
+PORT = 8080
+server_address = ("", PORT)
+domain = os.path.join(os.path.abspath("."), "templates")
+
+httpd = HTTPServer(server_address, MyHandler)
+
+print(f"Serving on http://127.0.0.1:{PORT}")
+httpd.serve_forever()
+

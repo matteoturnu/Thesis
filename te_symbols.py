@@ -1,30 +1,30 @@
 te_symbols = {
-                    "$": {
+                    "$ ": {
                         "Cheetah": "Python",
                         "Genshi and Kid": "Python",
                         "Mako": "Python",
                         "Velocity": "Java"
                     },
 
-                    "${int( )}": {    # NOTE: only for Spitfire until I (hopefully) find another method
-                        "Spitfire": "Python"
-                    },
-
-                    "#": {
+                    "# ": {
                         "Cheetah": "Python",
                         "Velocity": "Java",
                         "Handlebars": "JavaScript"
                     },
 
-                    "@": {
+                    "@ ": {
                         "SquirrellyJS": "JavaScript",
                     },
 
-                    "|": {
+                    "#set@a= :@a": {
+                        "Quik": "Python",
+                    },
+
+                    "| ": {
                         "SquirrellyJS": "JavaScript",
                     },
 
-                    "=": {
+                    "= ": {
                         "Slim": "Ruby"
                     },
 
@@ -40,6 +40,7 @@ te_symbols = {
                     },
 
                     "{@ }": {
+                        "Latte": "PHP",
                         "Dust": "JavaScript"
                     },
 
@@ -49,9 +50,15 @@ te_symbols = {
 
                     "${ }": {
                         "Chameleon": "Python",
+                        "Evoque": "Python",
                         "Thymeleaf": "Java",
                         "FreeMarker": "Java",
                         "Marko": "JavaScript"
+                    },
+
+                    "${int( )}": {
+                        "Spitfire": "Python",
+                        "Evoque": "Python"
                     },
 
                     "#{ }": {

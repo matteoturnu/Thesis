@@ -1,0 +1,5 @@
+
+aiohttp~=3.11.14
+psutil~=7.0.0
+pyppeteer~=2.0.0
+quik~=0.2.2
