@@ -1,129 +1,238 @@
+# TODO: study code context for asymmetric symbols ($, #, etc.)
 te_symbols = {
-                    "$ ": {
-                        "Cheetah": "Python",
-                        "Genshi and Kid": "Python",
-                        "Mako": "Python",
-                        "Velocity": "Java"
-                    },
+    " ": {
+        "Any": "Any" # code context
+    },
 
-                    "# ": {
-                        "Cheetah": "Python",
-                        "Velocity": "Java",
-                        "Handlebars": "JavaScript"
-                    },
+    "$ ": {
+        "Cheetah": "Python",
+        "Genshi and Kid": "Python",
+        "Mako": "Python",
+        "Velocity": "Java"
+    },
 
-                    "@ ": {
-                        "SquirrellyJS": "JavaScript",
-                    },
+    "# ": {
+        "Cheetah": "Python",
+        "Velocity": "Java",
+        "Handlebars": "JavaScript"
+    },
 
-                    "#set@a= :@a": {
-                        "Quik": "Python",
-                    },
+    "@ ": {
+        "SquirrellyJS": "JavaScript",
+        "Plates": "PHP"     # code context for "<?= $input ?>"
+    },
 
-                    "| ": {
-                        "SquirrellyJS": "JavaScript",
-                    },
+    "#set@a= :@a": {
+        "Quik": "Python",
+    },
 
-                    "= ": {
-                        "Slim": "Ruby"
-                    },
+    "| ": {
+        "SquirrellyJS": "JavaScript",
+    },
 
-                    "( )": {
-                        "Razor": ".NET"
-                    },
+    "= ": {
+        "Slim": "Ruby"
+    },
 
-                    "{ }": {
-                        "Smarty": "PHP",
-                        "Latte": "PHP",
-                        "Dust": "JavaScript",
-                        "Razor": ".NET"
-                    },
+    "( )": {       # TODO: problem: always successful when used in code context (treated as Python brackets)
+        "Razor": ".NET"
+    },
 
-                    "{@ }": {
-                        "Latte": "PHP",
-                        "Dust": "JavaScript"
-                    },
+    ")( ": {
+        "Razor": ".NET"
+    },
 
-                    "{= }": {
-                            "Latte": "PHP"
-                        },
+    "{ }": {
+        "Smarty": "PHP",
+        "Latte": "PHP",
+        "Dust": "JavaScript",
+        "Razor": ".NET"
+    },
+    "}{ ": {
+        "Smarty": "PHP",
+        "Latte": "PHP",
+        "Dust": "JavaScript",
+        "Razor": ".NET"
+    },
 
-                    "${ }": {
-                        "Chameleon": "Python",
-                        "Evoque": "Python",
-                        "Thymeleaf": "Java",
-                        "FreeMarker": "Java",
-                        "Marko": "JavaScript"
-                    },
+    "{@ }": {
+        "Latte": "PHP",
+        "Dust": "JavaScript"
+    },
 
-                    "${int( )}": {
-                        "Spitfire": "Python",
-                        "Evoque": "Python"
-                    },
+    "}{@ ": {
+        "Latte": "PHP",
+        "Dust": "JavaScript"
+    },
 
-                    "#{ }": {
-                        "Thymeleaf": "Java",
-                        "Pug and Jade": "JavaScript"
-                    },
+    "{= }": {
+        "Latte": "PHP"
+    },
 
-                    "{{= }}": {
-                        "web2py": "Python",
-                        "doT": "JavaScript"
-                    },
+    "}{= ": {
+        "Latte": "PHP"
+    },
 
-                    "{{ }}": {
-                        "Jinja2": "Python",
-                        "Django": "Python",
-                        "Tornado": "Python",
-                        "Twig": "PHP",
-                        "Blade": "PHP",
-                        "Jinjava": "Java",
-                        "JsRender": "JavaScript",
-                        "Handlebars": "JavaScript",
-                        "Nunjucks": "JavaScript",
-                        "Vue": "JavaScript",
-                        "SquirrellyJS": "JavaScript",
-                        "Template7": "JavaScript",
-                        "Golang": "Default Engine"
-                    },
+    "${ }": {
+        "Chameleon": "Python",
+        "Evoque": "Python",
+        "Thymeleaf": "Java",
+        "FreeMarker": "Java",
+        "Marko": "JavaScript",
+        "Plates": "PHP"     # code context for "<?= $input ?>"
+    },
 
-                    "{{# }}": {
-                        "Template7": "JavaScript"
-                    },
+    "}${ ": {
+        "Chameleon": "Python",
+        "Evoque": "Python",
+        "Thymeleaf": "Java",
+        "FreeMarker": "Java",
+        "Marko": "JavaScript"
+    },
 
-                    "{{: }}": {
-                        "JsRender": "JavaScript"
-                    },
+    "${int( )}": {
+        "Spitfire": "Python",
+        "Evoque": "Python"
+    },
 
-                    "<? ?>": {
-                        "Genshi and Kid": "Python",
-                    },
+    "}${int( )": {
+        "Spitfire": "Python",
+        "Evoque": "Python"
+    },
 
-                    "<?= ?>": {
-                        "Plates": "PHP"     # Note: short notation for echo. Functions work as well
-                    },
+    "#set $num= #$num": {
+        "Spitfire": "Python"
+    },
 
-                    "<% %>": {
-                        "Mako": "Python"
-                    },
+    "#{ }": {
+        "Thymeleaf": "Java",
+        "Pug and Jade": "JavaScript"
+    },
 
-                    "<%= %>": {
-                        "EJS": "JavaScript",
-                        "ERB": "Ruby",
-                        "Mojolicious": "Perl",
-                        "ASP": ".NET"
-                    },
+    "}#{ ": {
+        "Thymeleaf": "Java",
+        "Pug and Jade": "JavaScript"
+    },
 
-                    "{% %}": {
-                        "Tornado": "Python",
-                        "Pebble": "Java"
-                    },
+    "{{= }}": {
+        "web2py": "Python",
+        "doT": "JavaScript"
+    },
 
-                    "@! !@": {
-                        "Pyratemp": "Python"
-                    },
+    "}}{{= ": {
+        "web2py": "Python",
+        "doT": "JavaScript"
+    },
 
-                    "[[ ]]": {
-                        "Thymeleaf": "Java"
-                    }
-                }
+    "{{ }}": {
+        "Jinja2": "Python",
+        "Django": "Python",
+        "Tornado": "Python",
+        "Twig": "PHP",
+        "Blade": "PHP",
+        "Jinjava": "Java",
+        "JsRender": "JavaScript",
+        "Handlebars": "JavaScript",
+        "Nunjucks": "JavaScript",
+        "Vue": "JavaScript",
+        "SquirrellyJS": "JavaScript",
+        "Template7": "JavaScript",
+        "Golang": "Default Engine"
+    },
+
+    "}}{{ ": {
+        "Jinja2": "Python",
+        "Django": "Python",
+        "Tornado": "Python",
+        "Twig": "PHP",
+        "Blade": "PHP",
+        "Jinjava": "Java",
+        "JsRender": "JavaScript",
+        "Handlebars": "JavaScript",
+        "Nunjucks": "JavaScript",
+        "Vue": "JavaScript",
+        "SquirrellyJS": "JavaScript",
+        "Template7": "JavaScript",
+        "Golang": "Default Engine"
+    },
+
+    "{{# }}": {
+        "Template7": "JavaScript"
+    },
+
+    "}}{{# ": {
+        "Template7": "JavaScript"
+    },
+
+    "{{: }}": {
+        "JsRender": "JavaScript"
+    },
+
+    "}}{{: ": {
+        "JsRender": "JavaScript"
+    },
+
+    "<? ?>": {
+        "Genshi and Kid": "Python",
+    },
+
+    "?><? ": {
+        "Genshi and Kid": "Python",
+    },
+
+    "<?= ?>": {
+        "Plates": "PHP"  # Note: short notation for echo. Functions work as well
+    },
+
+    "1?><?= ": {    # can't close first statement without outputting something (1 in this case)
+        "Plates": "PHP"    # code context for "<?= $input ?>"
+    },
+
+    "<% %>": {
+        "Mako": "Python"
+    },
+
+    "%><% ": {
+        "Mako": "Python"
+    },
+
+    "<%= %>": {
+        "EJS": "JavaScript",
+        "ERB": "Ruby",
+        "Mojolicious": "Perl",
+        "ASP": ".NET"
+    },
+
+    "%><%= ": {
+        "EJS": "JavaScript",
+        "ERB": "Ruby",
+        "Mojolicious": "Perl",
+        "ASP": ".NET"
+    },
+
+    "{% %}": {
+        "Tornado": "Python",
+        "Pebble": "Java"
+    },
+
+    "%}{% ": {
+        "Tornado": "Python",
+        "Pebble": "Java"
+    },
+
+    "@! !@": {
+        "Pyratemp": "Python"
+    },
+
+    "!@@! ": {
+        "Pyratemp": "Python"
+    },
+
+    "[[ ]]": {
+        "Thymeleaf": "Java"
+    },
+
+    "]][[ ": {
+        "Thymeleaf": "Java"
+    }
+}

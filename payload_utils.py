@@ -5,35 +5,21 @@ import re
 import string
 import urllib.parse
 import html
-
-
-def generate_numbers_for_product():
-    # Define the lower and upper bounds for a 10-digit to 18-digit product
-    lower_bound = 10 ** 9  # 10 digits
-    upper_bound = 10 ** 18  # 18 digits
-    # Find two random numbers whose product is within the desired range
-    while True:
-        num1 = random.randint(10 ** 4, 10 ** 9)  # Random number for num1 (4 to 9 digits)
-        num2 = random.randint(10 ** 4, 10 ** 9)  # Random number for num2 (4 to 9 digits)
-        product = num1 * num2
-        if lower_bound <= product < upper_bound:
-            return num1, num2, product
+from simple_utils import *
 
 
 def create_payload(symbols):
     # generate random numbers for the payload product
     num_1, num_2, _ = generate_numbers_for_product()
     operation = f"{num_1}*{num_2}"
+
+    """if " " in symbols:
+        payload = symbols.replace(" ", operation)
     """
     if " " in symbols:
-        # replace the space with the actual operation
-        payload = symbols.replace(" ", operation)
-    else:
-        # payload = "#set $num=7*7#$num"
-        payload = symbols + operation
-    """
-    if " " in symbols:
-        payload = symbols.replace(" ", operation)
+        # start splitting from right
+        parts = symbols.rsplit(' ', 1)  # needed for #set $num= #$num" (Spitfire) since there are two spaces
+        payload = operation.join(parts)
     else:
         print("No place to insert payload operation. Exiting...")
         exit()
@@ -44,12 +30,12 @@ def create_payload(symbols):
 def on_btn_request(dom_reloaded, obj):
     async def is_request(request):
         if request.isNavigationRequest() and request.method == "POST":
-            # submit button case (form)
+            # ex: submit button case (form)
             if not dom_reloaded.done():
                 dom_reloaded.set_result(True)
                 await request.continue_()
         elif not dom_reloaded.done():
-            # js-navigation button, ajax request
+            # ex: js-navigation button, ajax request
             dom_reloaded.set_result(False)
             obj["request_obj"] = request
         else:
@@ -145,21 +131,32 @@ def forwards_scan(new_line, payload_end, start_next, delimiter_end, del_start_le
     return payload_end
 
 
+def merge_overlapping_payloads(payload1, payload2):
+    max_overlap = 0
+    for idx in range(1, min(len(payload1), len(payload2)) + 1):
+        if payload1[-idx:] == payload2[:idx]:
+            max_overlap = idx
+
+    return payload1 + payload2[max_overlap:]
+
+
 
 def get_sanitized_payloads(new_html, old_html, symbols, operation):
     # HYPOTHESIS: operation is never sanitized (ex: no 7/*7 or anything similar) but payload is
     # ENHANCEMENT: use a blacklist of symbols for which stopping scan
     # ex: "," and "!" for forward scanning
 
+    """
     changes_minus = []
     changes_plus = []
-    static_html = []
     diff_iter = difflib.ndiff(old_html.splitlines(), new_html.splitlines())
     for line in diff_iter:
         if line.startswith('+ '):
             changes_plus.append(line.strip("+ "))
         elif line.startswith('- '):
             changes_minus.append(line.strip("- "))
+    """
+    changes_plus, changes_minus = get_html_diffs(new_html, old_html)
 
 
     diffs = []
@@ -205,11 +202,15 @@ def get_sanitized_payloads(new_html, old_html, symbols, operation):
                     if i == last_i_saved and changed_payload not in diffs[-1]:
                         # case where both delimiters sanitized: do a merge between this payload
                         # and the last one saved in the list
+                        """
                         max_overlap = 0
                         for idx in range(1, min(len(diffs[-1]), len(changed_payload)) + 1):
                             if diffs[-1][-idx:] == changed_payload[:idx]:
                                 max_overlap = idx
+                        
                         changed_payload = diffs[-1] + changed_payload[max_overlap:]
+                        """
+                        changed_payload = merge_overlapping_payloads(diffs[-1], changed_payload)
                         merged_payloads = True
 
                 if changed_payload not in diffs:
@@ -375,15 +376,30 @@ async def inject_payload(page, url, payload):
     return html_resp
 
 
-def validate_injection(op_res, html_resp):
+def validate_injection(op_res, html_resp, symbols):
     success = False
     responses_lst = list()
+
+    #symbols_split = symbols.split(" ")
+
     res_matches = list(re.finditer(re.escape(op_res), html_resp))
     if res_matches:
         success = True
         prev_end = 0
         for match in res_matches:
             start, end = match.start(), match.end()
+
+            # if payload is contained in the symbols, those symbols are treated as simple text by engine
+            # for now, not considering symbols containing more than 2 spaces
+            # UPDATE: NO! Injection is successful even if not due to those symbols but you would
+            """
+            if symbols != " " and len(symbols_split) == 2:
+                symb_start = symbols_split[0]
+                symb_end = symbols_split[1]
+                if html_resp[start-len(symb_start):start] == symb_start and html_resp[end:end+len(symb_end)] == symb_end:
+                    break
+            """
+
             while start > prev_end and html_resp[start - 1] != ">":
                 start -= 1
             while end < len(html_resp) and html_resp[end] != "<":
@@ -409,11 +425,17 @@ def check_if_sanitized(payload, content):
 def store_symbols(symbols_lst, payloads_lst, new_symbols, new_payload):
     # e.g. avoid to add "{{ }}" if the list already contains successful symbols "{ }"
     symbols_are_contained = False
+
+
     for success_symbols in symbols_lst:
-        if success_symbols in new_symbols:
+        # condition 1) add " " if successful but don't prefer it to the others
+        # condition 2) if " " and "( )" are both successful, it's likely we are in a code context: don't save "( )"
+        if ((success_symbols in new_symbols and success_symbols != " ")
+                or (success_symbols == " " and new_symbols == "( )")):
             symbols_are_contained = True
             break
-        elif new_symbols in success_symbols:
+        elif ((new_symbols in success_symbols and new_symbols != " ")
+              or (success_symbols == "( )" and new_symbols == " ")):
             # e.g. success_symbols = ["{{ }}"] and curr_symbols = "{ }"
             # replace with the simplest form
             symbols_are_contained = True

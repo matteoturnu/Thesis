@@ -63,7 +63,9 @@ class MyHandler(BaseHTTPRequestHandler):
             email = params.get("email", [""])[0]
             print(f"Username - email: {username} - {email}")
 
-            new_template = "<h1>Welcome, %s!</h1>" % username
+            # new_template = "<h1>Welcome, ${ %s }!</h1>" % username
+            # new_template += "<p style=\"font-size:20px;\">Your email is: ${ %s } </p>" % email
+            new_template = "<h1>Welcome, %s !</h1>" % username
             new_template += "<p style=\"font-size:20px;\">Your email is: %s </p>" % email
             print("Template: ", new_template)
             #with open("spitfire_templates/new_template.spf", "w") as f:

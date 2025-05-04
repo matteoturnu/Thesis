@@ -55,8 +55,8 @@
             $email = $_POST["email"];
 
             $new_template = "<h1>User Profile</h1>
-                                <p>Hello, $user </p>
-                                <p>Your email is: $email</p>";
+                                <p>Hello, { $user }</p>
+                                <p>Your email is: {= $email }</p>";
         }
         //$name = $_POST["name"];
 

@@ -1,46 +1,7 @@
-import asyncio
-import html
-import re
-import random
-import sys
-import threading
-
-import aiohttp
-import psutil
 from pyppeteer import launch
-from te_symbols import te_symbols
-import subprocess
-import os
-from bs4 import BeautifulSoup
-
 from server_utils import *
 from payload_utils import *
 from engine_utils import *
-
-
-def check_if_exception(actual_resp, exp_resp, delimiters):
-    changes_minus = []
-    changes_plus = []
-    diff_iter = difflib.ndiff(exp_resp.splitlines(), actual_resp.splitlines())
-    for line in diff_iter:
-        if line.startswith('+ '):
-            changes_plus.append(line.strip("+ "))
-        elif line.startswith('- '):
-            changes_minus.append(line.strip("- "))
-
-    if len(changes_minus) != len(changes_plus):
-        return True
-
-    for exp, actual in zip(changes_minus, changes_plus):
-        delimiter_start = delimiters.split(" ")[0]
-        idx_end = exp.index(delimiter_start)
-        exp_substr = exp[:idx_end]
-        if exp_substr not in actual:
-            return True
-
-    return False
-
-
 
 
 
@@ -56,14 +17,26 @@ async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, 
     # print(response)
 
     result = str(eval(operation))
-    success, resp_matches = validate_injection(result, response)
+    success, resp_matches = validate_injection(result, response, symbols)
+    # TODO: here, do not add symbols if they are considered as text!
     if success:
-        # check if current symbols have to be added or not
-        store_symbols(success_symbols_lst, success_payloads_lst, symbols, payload)
+        symb_start, symb_end = symbols.rsplit(" ", 1)
+        symbols_in_response = False
+        if symbols != " ":
+            for match in resp_matches:
+                if symb_start in match and symb_end in match:
+                    symbols_in_response = True
+                    break
+            if not symbols_in_response:
+                # check if current symbols have to be added or not
+                store_symbols(success_symbols_lst, success_payloads_lst, symbols, payload)
+        else:
+            store_symbols(success_symbols_lst, success_payloads_lst, symbols, payload)
 
         print("Successful injection!")
         for match in resp_matches:
             print(match)
+        print("Stored payload: ", success_payloads_lst)
     else:
         print("Failed injection.")
 
@@ -71,22 +44,21 @@ async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, 
         # now inject legitimate data
         default_input = "abcdefghijklmno"
         legit_response = await inject_payload(page, url, default_input)
-
-
-
         # build the expected html response when payload is used
+        # TODO: comparison approach doesn't work for code context if legitimate input throws exceptions.
+        #  Check before if legitimate response contains exceptions (response code 5xx, keywords, broken html structure, response headers)
+        exception_in_legit = find_exception_in_response(legit_response)
+        if exception_in_legit:
+            print("EXCEPTION in LEGIT response.", response)
+            return response, []
+
         expected_response = legit_response.replace(default_input, payload)
-        # static_html = legit_response.replace(default_input, "")
         exception = check_if_exception(response, expected_response, symbols)
         if exception:
             print("EXCEPTION FOUND.", response)
             return response, []
 
         modified_payloads = get_sanitized_payloads(response, expected_response, symbols, operation)
-
-        # ex: email get changed to "a@a" if the payload is invalid because of a client-side check
-        # modified_payloads will contain this value as the old and new html responses are different
-        # modified_payloads = [mod for mod in modified_payloads if operation in mod]
         modified_payloads = [mod for mod in modified_payloads]
 
     return response, modified_payloads
@@ -109,18 +81,18 @@ async def main():
     engines_dct = load_engines()
     sanitized_payloads_by_symbols = dict()
     for symbols in te_symbols:
-    # for symbols in ["$ ", "<% %>", "{ }"]:
+    # for symbols in [" ", "@ ", "${ }", "<?= ?>"]:
         response, sanitized_payloads = await ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, url)
         eng_name = check_te_in_response(response, engines_dct)
 
-        # eng_name = ""  # PROBLEM: a@a is present in the sanitized payloads list!
+        eng_name = ""
         if eng_name != "":
             print(f"\nTemplate engine '{eng_name}' found in the response!")
             # retrieve the symbols recognized by the engine
             eng_symbols = load_symbols_by_engine(eng_name)
             for tags in eng_symbols:
                 if tags not in success_symbols_lst:
-                    # NEED TO OBTAIN SANITIZED PAYLOADS HERE TOO!
+                    # TODO: NEED TO OBTAIN SANITIZED PAYLOADS HERE TOO!
                     await ssti_attack(success_symbols_lst, success_payloads_lst, tags, page, url)
             break
         # no need to consider sanitized payloads in a response with exceptions
@@ -145,11 +117,14 @@ async def main():
         print(sanitized_payloads_by_symbols)
 
 
-if __name__ == "__main__":
-    ### USE THIS PIECE OF CODE IF YOU ONLY EXECUTE auto_ssti.py ###
 
-    servers_lst = ["spitfire_tempeng/spitfire_server.py", "evoque_tempeng/server.py", "quik_tempeng/server.py", "latte_tempeng/latte_server.php",
-                   "plates_tempeng/plates_server.php"]
+if __name__ == "__main__":
+    servers_lst = ["plates_tempeng/plates_server.php",
+                   "latte_tempeng/latte_server.php",
+                   "quik_tempeng/server.py",
+                   "evoque_tempeng/server.py",
+                   "spitfire_tempeng/spitfire_server.py",
+                   ]
 
     for server in servers_lst:
         choice = ""
@@ -157,10 +132,8 @@ if __name__ == "__main__":
 
         print(f"SCANNING URL '{server}' ...")
         asyncio.run(main(), debug=True)
+        # TODO: solve problems with same PHP engine being run repeatedly (PHP process to be killed)
         shutdown_server(server_process)
-
-        # server_process.wait()
-
         # allow the user to stop execution before studying new server
         if server != servers_lst[-1]:
             while choice not in ["Y", "N"]:
@@ -169,7 +142,3 @@ if __name__ == "__main__":
         if choice == "N":
             break
 
-    ##### EXECUTING spitfire_server.py FIRST AND THEN auto_ssti.py
-    """
-    asyncio.run(main())
-    """

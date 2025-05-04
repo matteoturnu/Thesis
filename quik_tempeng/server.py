@@ -55,11 +55,14 @@ class MyHandler(BaseHTTPRequestHandler):
             email = params.get("email", [""])[0]
             print(f"Username - email: {username} - {email}")
 
-            template_string = "<h1>Welcome, %s!</h1>" % username
-            template_string += "<p style=\"font-size:20px;\">Your email is: %s </p>" % email
+            template_string = "<h1>Welcome, @{ %s }!</h1>" % username
+            template_string += "<p style=\"font-size:20px;\">Your email is: @{ %s } </p>" % email
+            #template_string = "<h1>Welcome, @{username}!</h1>"
+            #template_string += "<p style=\"font-size:20px;\">Your email is: @{email} </p>"
 
         try:
             # response = Template(template_string).render({})
+            # response = Template(template_string).render({"username": username})
             response = Template(template_string).render(locals())
             print(locals())
         except Exception as e:

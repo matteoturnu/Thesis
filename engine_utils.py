@@ -1,5 +1,6 @@
 import re
 from te_symbols import te_symbols
+from simple_utils import get_html_diffs
 
 def load_engines():
     te_lst = dict()
@@ -24,10 +25,13 @@ def find_template_engines(success_symbols):
     # load all the existing engines based on the successful symbols
     # shape: {"<eng_name>": {"symbols": <symbols>, "language": <lang>}, ...}
     for symbols in success_symbols:
-        include_te = True
+        #include_te = True  <-- part of code in the comments
         for te, lang in te_symbols[symbols].items():
 
+            """
             for syms, engines in te_symbols.items():
+                # PROBLEM: it should skip the code context version of the same symbols too! 
+                # ex: symbols = syms = "{ }", then skip "}{ " as well
                 if syms == symbols:
                     continue
                 if te in engines and syms not in success_symbols:
@@ -36,20 +40,11 @@ def find_template_engines(success_symbols):
                     break
 
             if include_te:
-                if te not in engines_by_symbols:
-                    engines_by_symbols[te] = {"symbols": {symbols}, "language": lang}
-                else:
-                    engines_by_symbols[te]["symbols"].add(symbols)
-
-    """
-    for symbols in success_symbols:
-        for te, lang in te_symbols[symbols].items():
+            """
             if te not in engines_by_symbols:
                 engines_by_symbols[te] = {"symbols": {symbols}, "language": lang}
             else:
                 engines_by_symbols[te]["symbols"].add(symbols)
-    """
-
 
     unique_engines = set(engines_by_symbols.keys())
     for eng in unique_engines:
@@ -79,6 +74,51 @@ def check_te_in_response(response, eng_lang_dct):
             break
 
     return engine_found
+
+
+def find_exception_in_response(response):
+    # TODO: consider response codes and headers as well!
+    resp_lowercase = response.lower()
+    error_keywords = ["traceback", "exception", "error"]
+    for keyword in error_keywords:
+        if keyword in resp_lowercase:
+            return True
+    return False
+
+
+
+def check_if_exception(actual_resp, exp_resp, delimiters):
+    """
+    changes_minus = []
+    changes_plus = []
+    diff_iter = difflib.ndiff(exp_resp.splitlines(), actual_resp.splitlines())
+    for line in diff_iter:
+        if line.startswith('+ '):
+            changes_plus.append(line.strip("+ "))
+        elif line.startswith('- '):
+            changes_minus.append(line.strip("- "))
+    """
+    changes_minus, changes_plus = get_html_diffs(actual_resp, exp_resp)
+
+    if len(changes_minus) != len(changes_plus):
+        return True
+
+    for exp, actual in zip(changes_minus, changes_plus):
+        delimiter_start = delimiters.split(" ")[0]
+        try:
+            idx_end = exp.index(delimiter_start)
+            # safer: consider idx_end-1
+            # a@a default input for email gives problems otherwise
+            exp_substr = exp[:idx_end-1]
+            if exp_substr not in actual:
+                return True
+        except ValueError:
+            # symbols may have been escaped.
+            # TODO: consider this case too for exceptions!
+            pass
+
+    return False
+
 
 
 

@@ -15,32 +15,30 @@
             $name = htmlentities($name);
             $surname = $_POST["surname"];
 
-            /*$new_temp\late = "<h1>User Profile</h1>
-            <p>Hello, <?php echo \"$name\" ?></p>";
-            <?*/
-
-            /*$new_template = "<h1>User Profile</h1>
-                            <p>Hello, <?php echo \$user ?></p>";*/
-
-            /*$new_template = "<h1>User Profile</h1>
-                            <p>Hello, <?php echo \"${name}\" ?></p>
-                            <p>Your surname is: <?php echo \"${surname}\" ?></p>";*/
-            $new_template = "<h1>User Profile</h1>
+            $plain_context_template = "<h1>User Profile</h1>
                             <p>Hello, $name </p>
                             <p>Your surname is: $surname</p>";
+            $code_context_template = "<h1>User Profile</h1>
+                            <p>Hello, <?= $name ?></p>
+                            <p>Your surname is: <?= $surname ?></p>";
 
         }
         else if (isset($_POST["credentials_form"])) {
             $user = $_POST["username"];
             $email = $_POST["email"];
 
-            $new_template = "<h1>User Profile</h1>
+            $plain_context_template = "<h1>User Profile</h1>
                             <p>Hello, $user </p>
-                            <p>Your email is: $email</p>";
+                            <p>Your email is: $email </p>";
+            $code_context_template = "<h1>User Profile</h1>
+                            <p>Hello, <?= $user ?> </p>
+                            <p>Your email is: <?= $email ?> </p>";
+            /* NOTE: <? ?> symbols require "echo 7*7" to obtain same result as <?=7*7?> */
         }
 
         # create a file with the template
-        file_put_contents("php_templates/new_template.php", $new_template);
+        # file_put_contents("php_templates/new_template.php", $plain_context_template);
+        file_put_contents("php_templates/new_template.php", $plain_context_template);
         echo $templates->render('new_template');
 
         #echo $templates->render('profile', ['name' => $name]);

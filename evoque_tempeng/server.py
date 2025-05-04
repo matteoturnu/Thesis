@@ -1,17 +1,6 @@
 import os.path
-import sys
-
-# sys.path.append("/")
-# from template import Template
 from evoque.template import Template
-"""
-domain = os.path.join(os.path.abspath("."), "templates")
-print(domain)
-name = "${7*7}"
-template = "Hello, %s!" % name
-tpl = Template(domain=domain, name="", src=template, from_string=True)
-print(tpl.evoque({}))
-"""
+
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
@@ -63,8 +52,9 @@ class MyHandler(BaseHTTPRequestHandler):
             email = params.get("email", [""])[0]
             print(f"Username - email: {username} - {email}")
 
-            template_string = "<h1>Welcome, %s!</h1>" % username
-            template_string += "<p style=\"font-size:20px;\">Your email is: %s </p>" % email
+            template_string = "<h1>Welcome, ${ %s }!</h1>" % username
+            template_string += "<p style=\"font-size:20px;\">Your email is: ${ %s } </p>" % email
+            # template_string = "<h1>Welcome, ${" + username + "}!</h1>"
 
         try:
             response = Template(domain=domain, name="", src=template_string, from_string=True).evoque({})
