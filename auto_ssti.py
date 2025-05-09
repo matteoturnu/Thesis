@@ -18,7 +18,6 @@ async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, 
 
     result = str(eval(operation))
     success, resp_matches = validate_injection(result, response, symbols)
-    # TODO: here, do not add symbols if they are considered as text!
     if success:
         symb_start, symb_end = symbols.rsplit(" ", 1)
         symbols_in_response = False
@@ -39,17 +38,15 @@ async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, 
         print("Stored payload: ", success_payloads_lst)
     else:
         print("Failed injection.")
-
         # process to find if sanitization occurred
         # now inject legitimate data
         default_input = "abcdefghijklmno"
         legit_response = await inject_payload(page, url, default_input)
         # build the expected html response when payload is used
-        # TODO: comparison approach doesn't work for code context if legitimate input throws exceptions.
-        #  Check before if legitimate response contains exceptions (response code 5xx, keywords, broken html structure, response headers)
+
         exception_in_legit = find_exception_in_response(legit_response)
         if exception_in_legit:
-            print("EXCEPTION in LEGIT response.", response)
+            print("EXCEPTION in LEGIT response.", legit_response)
             return response, []
 
         expected_response = legit_response.replace(default_input, payload)
@@ -80,24 +77,32 @@ async def main():
     success_payloads_lst = []
     engines_dct = load_engines()
     sanitized_payloads_by_symbols = dict()
+    break_from_symbols_for = False
     for symbols in te_symbols:
-    # for symbols in [" ", "@ ", "${ }", "<?= ?>"]:
+    # for symbols in ["#set@a= :@a", "1}#set@a= :@a", "( )", ")( ", "<?= ?>", "1?><?= "]:
         response, sanitized_payloads = await ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, url)
-        eng_name = check_te_in_response(response, engines_dct)
 
-        eng_name = ""
-        if eng_name != "":
-            print(f"\nTemplate engine '{eng_name}' found in the response!")
-            # retrieve the symbols recognized by the engine
-            eng_symbols = load_symbols_by_engine(eng_name)
-            for tags in eng_symbols:
-                if tags not in success_symbols_lst:
-                    # TODO: NEED TO OBTAIN SANITIZED PAYLOADS HERE TOO!
-                    await ssti_attack(success_symbols_lst, success_payloads_lst, tags, page, url)
-            break
-        # no need to consider sanitized payloads in a response with exceptions
-        elif sanitized_payloads:
+        if sanitized_payloads:
             sanitized_payloads_by_symbols[symbols] = sanitized_payloads
+
+        eng_names_lst = check_te_in_response(response, engines_dct)
+        # eng_name = ""
+        if eng_names_lst:
+            print(f"\nTemplate engine name(s) found in the response! Engine(s): {eng_names_lst}")
+            scanned_symbols = get_previous_keys(te_symbols, symbols, include_current=True)
+            for eng_name in eng_names_lst:
+                eng_symbols = load_symbols_by_engine(eng_name)
+                for tags in eng_symbols:
+                    if tags not in scanned_symbols:
+                        scanned_symbols.append(tags)
+                        response, new_sanit_payloads = await ssti_attack(success_symbols_lst, success_payloads_lst, tags, page, url)
+                        if new_sanit_payloads:
+                            sanitized_payloads_by_symbols[tags] = new_sanit_payloads
+            break_from_symbols_for = True
+        # no need to consider sanitized payloads in a response with exception
+        if break_from_symbols_for:
+            break
+
 
     await browser.close()
 
@@ -119,11 +124,11 @@ async def main():
 
 
 if __name__ == "__main__":
-    servers_lst = ["plates_tempeng/plates_server.php",
-                   "latte_tempeng/latte_server.php",
-                   "quik_tempeng/server.py",
+    servers_lst = ["spitfire_tempeng/spitfire_server.py",
+                    "plates_tempeng/plates_server.php",
+                    "latte_tempeng/latte_server.php",
+                    "quik_tempeng/server.py",
                    "evoque_tempeng/server.py",
-                   "spitfire_tempeng/spitfire_server.py",
                    ]
 
     for server in servers_lst:

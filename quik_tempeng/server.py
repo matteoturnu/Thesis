@@ -41,30 +41,33 @@ class MyHandler(BaseHTTPRequestHandler):
         # Parse form data
         params = parse_qs(post_data)
 
-        template_string = ""
+        plaintext_context_template = ""
+        code_context_template = ""
         if params.get("identity_form"):
             name = params.get("name", [""])[0]  # Default to empty string if missing
             surname = params.get("surname", [""])[0]
             print(f"Name - Username: {name} - {surname}")
 
-            template_string = "<h1>Welcome, %s</h1>" % name
-            template_string += "<p style=\"font-size:20px;\">Your surname is: %s </p>" % surname
+            plaintext_context_template = "<h1>Welcome, %s</h1>" % name
+            plaintext_context_template += "<p style=\"font-size:20px;\">Your surname is: %s </p>" % surname
+
+            code_context_template = "<h1>Welcome, @{%s}</h1>" % name
+            code_context_template += "<p style=\"font-size:20px;\">Your surname is: @{%s} </p>" % surname
 
         if params.get("credentials_form"):
             username = params.get("username", [""])[0]  # Default to empty string if missing
             email = params.get("email", [""])[0]
             print(f"Username - email: {username} - {email}")
 
-            template_string = "<h1>Welcome, @{ %s }!</h1>" % username
-            template_string += "<p style=\"font-size:20px;\">Your email is: @{ %s } </p>" % email
-            #template_string = "<h1>Welcome, @{username}!</h1>"
-            #template_string += "<p style=\"font-size:20px;\">Your email is: @{email} </p>"
+            plaintext_context_template = "<h1>Welcome, %s !</h1>" % username
+            plaintext_context_template += "<p style=\"font-size:20px;\">Your email is: %s</p>" % email
+
+            code_context_template = "<h1>Welcome, @%s!</h1>" % username
+            code_context_template += "<p style=\"font-size:20px;\">Your email is: @%s </p>" % email
 
         try:
-            # response = Template(template_string).render({})
-            # response = Template(template_string).render({"username": username})
-            response = Template(template_string).render(locals())
-            print(locals())
+            # response = Template(plaintext_context_template).render(locals())
+            response = Template(code_context_template).render(locals())
         except Exception as e:
             response = f"<h1>Internal server error</h1><p>{str(e)}</p>"
 

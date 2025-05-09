@@ -67,13 +67,14 @@ def find_template_engines(success_symbols):
 
 
 def check_te_in_response(response, eng_lang_dct):
-    engine_found = ""
+    eng_strings_found = list()
+    # engine_found = ""
     for eng, lang in eng_lang_dct.items():
         if re.search(eng, response, re.IGNORECASE):
-            engine_found = eng
-            break
+            # engine_found = eng
+            eng_strings_found.append(eng)
 
-    return engine_found
+    return eng_strings_found
 
 
 def find_exception_in_response(response):
@@ -88,18 +89,13 @@ def find_exception_in_response(response):
 
 
 def check_if_exception(actual_resp, exp_resp, delimiters):
-    """
-    changes_minus = []
-    changes_plus = []
-    diff_iter = difflib.ndiff(exp_resp.splitlines(), actual_resp.splitlines())
-    for line in diff_iter:
-        if line.startswith('+ '):
-            changes_plus.append(line.strip("+ "))
-        elif line.startswith('- '):
-            changes_minus.append(line.strip("- "))
-    """
-    changes_minus, changes_plus = get_html_diffs(actual_resp, exp_resp)
+    # first simple check through error keywords
+    if find_exception_in_response(actual_resp):
+        return True
 
+    # other checks: length of the two responses and finding symbols
+    # changes_minus, changes_plus = get_html_diffs(actual_resp, exp_resp)
+    changes_plus, changes_minus = get_html_diffs(actual_resp, exp_resp)
     if len(changes_minus) != len(changes_plus):
         return True
 
@@ -109,13 +105,13 @@ def check_if_exception(actual_resp, exp_resp, delimiters):
             idx_end = exp.index(delimiter_start)
             # safer: consider idx_end-1
             # a@a default input for email gives problems otherwise
+            # take the static html before delimiter_start
             exp_substr = exp[:idx_end-1]
             if exp_substr not in actual:
                 return True
         except ValueError:
-            # symbols may have been escaped.
             # TODO: consider this case too for exceptions!
-            pass
+            print("[ValueError] Symbols may have been escaped!")
 
     return False
 

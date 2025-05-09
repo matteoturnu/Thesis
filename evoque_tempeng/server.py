@@ -38,26 +38,34 @@ class MyHandler(BaseHTTPRequestHandler):
         # Parse form data
         params = parse_qs(post_data)
 
-        template_string = ""
+        plaintext_context_template = ""
+        code_context_template = ""
         if params.get("identity_form"):
             name = params.get("name", [""])[0]  # Default to empty string if missing
             surname = params.get("surname", [""])[0]
             print(f"Name - Username: {name} - {surname}")
 
-            template_string = "<h1>Welcome, %s</h1>" % name
-            template_string += "<p style=\"font-size:20px;\">Your surname is: %s </p>" % surname
+            plaintext_context_template = "<h1>Welcome, %s</h1>" % name
+            plaintext_context_template += "<p style=\"font-size:20px;\">Your surname is: %s </p>" % surname
+
+            code_context_template = "<h1>Welcome, ${%s}</h1>" % name
+            code_context_template += "<p style=\"font-size:20px;\">Your surname is: ${%s}</p>" % surname
 
         if params.get("credentials_form"):
             username = params.get("username", [""])[0]  # Default to empty string if missing
             email = params.get("email", [""])[0]
             print(f"Username - email: {username} - {email}")
 
-            template_string = "<h1>Welcome, ${ %s }!</h1>" % username
-            template_string += "<p style=\"font-size:20px;\">Your email is: ${ %s } </p>" % email
+            plaintext_context_template = "<h1>Welcome, %s !</h1>" % username
+            plaintext_context_template += "<p style=\"font-size:20px;\">Your email is: %s </p>" % email
+
+            code_context_template = "<h1>Welcome, ${%s}!</h1>" % username
+            code_context_template += "<p style=\"font-size:20px;\">Your email is: ${%s} </p>" % email
             # template_string = "<h1>Welcome, ${" + username + "}!</h1>"
 
         try:
-            response = Template(domain=domain, name="", src=template_string, from_string=True).evoque({})
+            # response = Template(domain=domain, name="", src=plaintext_context_template, from_string=True).evoque({})
+            response = Template(domain=domain, name="", src=code_context_template, from_string=True).evoque({})
         except Exception as e:
             response = f"<h1>Internal server error</h1><p>{str(e)}</p>"
 

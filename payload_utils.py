@@ -146,16 +146,6 @@ def get_sanitized_payloads(new_html, old_html, symbols, operation):
     # ENHANCEMENT: use a blacklist of symbols for which stopping scan
     # ex: "," and "!" for forward scanning
 
-    """
-    changes_minus = []
-    changes_plus = []
-    diff_iter = difflib.ndiff(old_html.splitlines(), new_html.splitlines())
-    for line in diff_iter:
-        if line.startswith('+ '):
-            changes_plus.append(line.strip("+ "))
-        elif line.startswith('- '):
-            changes_minus.append(line.strip("- "))
-    """
     changes_plus, changes_minus = get_html_diffs(new_html, old_html)
 
 
@@ -172,9 +162,8 @@ def get_sanitized_payloads(new_html, old_html, symbols, operation):
             if tag in ('replace', 'insert', 'delete'):
                 new_chars_idx.append([j1, j2])
 
-        # considering only two cases: e.g. symbols "$" and symbols like "${ }"
         if len(symbols) > 1:
-            delimiter_start, delimiter_end = symbols.split(" ")
+            delimiter_start, delimiter_end = symbols.rsplit(' ', 1)
         else:
             delimiter_start = symbols
             delimiter_end = ""
@@ -202,14 +191,6 @@ def get_sanitized_payloads(new_html, old_html, symbols, operation):
                     if i == last_i_saved and changed_payload not in diffs[-1]:
                         # case where both delimiters sanitized: do a merge between this payload
                         # and the last one saved in the list
-                        """
-                        max_overlap = 0
-                        for idx in range(1, min(len(diffs[-1]), len(changed_payload)) + 1):
-                            if diffs[-1][-idx:] == changed_payload[:idx]:
-                                max_overlap = idx
-                        
-                        changed_payload = diffs[-1] + changed_payload[max_overlap:]
-                        """
                         changed_payload = merge_overlapping_payloads(diffs[-1], changed_payload)
                         merged_payloads = True
 

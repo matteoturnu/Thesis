@@ -22,7 +22,7 @@ class MyHandler(BaseHTTPRequestHandler):
                 with open("spitfire_templates/welcome.spf", "w") as f:
                     f.write(new_template)
                 env.load_dir()
-                #response = env.render_template("spitfire_templates\\new_template", opts=[])
+                # response = env.render_template("spitfire_templates\\new_template", opts=[])
                 response = env.render_template(TEMPLATE_DIR+"\\welcome", opts=[])
             else:
                 response = env.render_template(TEMPLATE_DIR+"\\form", opts=[])
@@ -51,12 +51,15 @@ class MyHandler(BaseHTTPRequestHandler):
             surname = params.get("surname", [""])[0]
             print(f"Name - Username: {name} - {surname}")
 
-            new_template = "<h1>Welcome, %s!</h1>" % name
-            new_template += "<p style=\"font-size:20px;\">Your surname is: %s </p>" % surname
-            print("Template: ", new_template)
-            #with open("spitfire_templates/new_template.spf", "w") as f:
+            plaintext_context_template = "<h1>Welcome, %s!</h1>" % name
+            plaintext_context_template += "<p style=\"font-size:20px;\">Your surname is: %s </p>" % surname
+
+            code_context_template = "<h1>Welcome, $%s!</h1>" % name
+            code_context_template += "<p style=\"font-size:20px;\">Your surname is: $%s </p>" % surname
+
             with open("spitfire_templates/welcome.spf", "w") as f:
-                f.write(new_template)
+                # f.write(plaintext_context_template)
+                f.write(code_context_template)
 
         if params.get("credentials_form"):
             username = params.get("username", [""])[0]  # Default to empty string if missing
@@ -65,17 +68,19 @@ class MyHandler(BaseHTTPRequestHandler):
 
             # new_template = "<h1>Welcome, ${ %s }!</h1>" % username
             # new_template += "<p style=\"font-size:20px;\">Your email is: ${ %s } </p>" % email
-            new_template = "<h1>Welcome, %s !</h1>" % username
-            new_template += "<p style=\"font-size:20px;\">Your email is: %s </p>" % email
-            print("Template: ", new_template)
-            #with open("spitfire_templates/new_template.spf", "w") as f:
+            plaintext_context_template = "<h1>Welcome, %s !</h1>" % username
+            plaintext_context_template += "<p style=\"font-size:20px;\">Your email is: %s </p>" % email
+
+            code_context_template = "<h1>Welcome, $%s !</h1>" % username
+            code_context_template += "<p style=\"font-size:20px;\">Your email is: $%s </p>" % email
             with open("spitfire_templates/welcome.spf", "w") as f:
-                f.write(new_template)
+                # f.write(plaintext_context_template)
+                f.write(code_context_template)
 
         # Need to keep the server online
         try:
             env.load_dir()
-            #response = env.render_template("spitfire_templates\\new_template", opts=[])
+            # response = env.render_template("spitfire_templates\\new_template", opts=[])
             response = env.render_template(TEMPLATE_DIR+"\\welcome", opts=[])
         except Exception as e:
             response = f"<h1>Internal server error</h1><p>{str(e)}</p>"

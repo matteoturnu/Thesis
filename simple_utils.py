@@ -24,3 +24,15 @@ def get_html_diffs(new_content, old_content):
             changes_minus.append(line.strip("- "))
 
     return changes_plus, changes_minus
+
+def get_previous_keys(te_symbols, current_key, include_current=False):
+    keys = list(te_symbols.keys())
+    try:
+        index = keys.index(current_key)
+        if include_current:
+            return keys[:index + 1]
+        else:
+            return keys[:index]
+    except ValueError:
+        # current_key not found
+        return []

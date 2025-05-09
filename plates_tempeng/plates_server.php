@@ -38,7 +38,7 @@
 
         # create a file with the template
         # file_put_contents("php_templates/new_template.php", $plain_context_template);
-        file_put_contents("php_templates/new_template.php", $plain_context_template);
+        file_put_contents("php_templates/new_template.php", $code_context_template);
         echo $templates->render('new_template');
 
         #echo $templates->render('profile', ['name' => $name]);

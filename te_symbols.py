@@ -19,11 +19,16 @@ te_symbols = {
 
     "@ ": {
         "SquirrellyJS": "JavaScript",
-        "Plates": "PHP"     # code context for "<?= $input ?>"
+        "Plates": "PHP",     # code context for "<?= $input ?>"
+        "Latte": "PHP"       # code context for "{= $input }"
     },
 
     "#set@a= :@a": {
         "Quik": "Python",
+    },
+
+    "1}#set@a= :@a": {
+        "Quik": "Python"    # code context for ' "@%s" % input ' and ' "@{%s}" % input '
     },
 
     "| ": {
@@ -34,7 +39,7 @@ te_symbols = {
         "Slim": "Ruby"
     },
 
-    "( )": {       # TODO: problem: always successful when used in code context (treated as Python brackets)
+    "( )": {
         "Razor": ".NET"
     },
 
@@ -48,11 +53,8 @@ te_symbols = {
         "Dust": "JavaScript",
         "Razor": ".NET"
     },
-    "}{ ": {
-        "Smarty": "PHP",
-        "Latte": "PHP",
-        "Dust": "JavaScript",
-        "Razor": ".NET"
+    "1}{ ": {
+        "Latte": "PHP",     # code context for "{= $user_input}"
     },
 
     "{@ }": {
@@ -60,17 +62,16 @@ te_symbols = {
         "Dust": "JavaScript"
     },
 
-    "}{@ ": {
-        "Latte": "PHP",
-        "Dust": "JavaScript"
+    "1}{@ ": {
+        "Latte": "PHP",     # code context for "{= $user_input}"
     },
 
     "{= }": {
         "Latte": "PHP"
     },
 
-    "}{= ": {
-        "Latte": "PHP"
+    "1}{= ": {
+        "Latte": "PHP"      # code context for "{= $user_input}"
     },
 
     "${ }": {
@@ -79,15 +80,18 @@ te_symbols = {
         "Thymeleaf": "Java",
         "FreeMarker": "Java",
         "Marko": "JavaScript",
-        "Plates": "PHP"     # code context for "<?= $input ?>"
+        "Plates": "PHP",     # code context for "<?= $input ?>"
+        "Latte": "PHP"       # code context for "{= $input }"
     },
 
     "}${ ": {
         "Chameleon": "Python",
-        "Evoque": "Python",
         "Thymeleaf": "Java",
         "FreeMarker": "Java",
         "Marko": "JavaScript"
+    },
+    "1}${ ": {
+        "Evoque": "Python"  # code context for "@{%s}" % input
     },
 
     "${int( )}": {
@@ -95,8 +99,7 @@ te_symbols = {
         "Evoque": "Python"
     },
 
-    "}${int( )": {
-        "Spitfire": "Python",
+    "1}${int( )": {
         "Evoque": "Python"
     },
 
