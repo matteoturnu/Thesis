@@ -1,7 +1,7 @@
 # TODO: study code context for asymmetric symbols ($, #, etc.)
 te_symbols = {
     " ": {
-        "Any": "Any" # code context
+        "Any": "Any"    # code context
     },
 
     "$ ": {
@@ -53,6 +53,7 @@ te_symbols = {
         "Dust": "JavaScript",
         "Razor": ".NET"
     },
+    
     "1}{ ": {
         "Latte": "PHP",     # code context for "{= $user_input}"
     },
@@ -74,6 +75,22 @@ te_symbols = {
         "Latte": "PHP"      # code context for "{= $user_input}"
     },
 
+    "{function=\"print( )\"}": {
+        "RainTPL": "PHP"
+    },
+
+    "a}{function=\"print( )\"": {
+        "RainTPL": "PHP"    # code context for 'Hello, {$' . $user . '} '
+    },
+
+    "{# #}": {
+        "RainTPL": "PHP"    # syntax for constants
+    },
+
+    "a}{# #": {
+        "RainTPL": "PHP"    # syntax for constants; code context for 'Hello, {$' . $user . '} '
+    },
+
     "${ }": {
         "Chameleon": "Python",
         "Evoque": "Python",
@@ -81,7 +98,8 @@ te_symbols = {
         "FreeMarker": "Java",
         "Marko": "JavaScript",
         "Plates": "PHP",     # code context for "<?= $input ?>"
-        "Latte": "PHP"       # code context for "{= $input }"
+        "Latte": "PHP",       # code context for "{= $input }"
+        "Kajiki": "Python"
     },
 
     "}${ ": {
@@ -91,16 +109,23 @@ te_symbols = {
         "Marko": "JavaScript"
     },
     "1}${ ": {
-        "Evoque": "Python"  # code context for "@{%s}" % input
+        "Evoque": "Python",  # code context for "@{%s}" % input
+        "Kajiki": "Python",  # code context for "${%s}" % input
     },
 
     "${int( )}": {
         "Spitfire": "Python",
-        "Evoque": "Python"
+        "Evoque": "Python",
+        "Kajiki": "Python"
     },
 
     "1}${int( )": {
-        "Evoque": "Python"
+        "Evoque": "Python",
+        "Kajiki": "Python"      # code context for "${%s}" % input
+    },
+
+    "{${ }}": {
+        "RainTPL": "PHP"    # using both template syntax and PHP syntax
     },
 
     "#set $num= #$num": {
@@ -189,6 +214,22 @@ te_symbols = {
 
     "1?><?= ": {    # can't close first statement without outputting something (1 in this case)
         "Plates": "PHP"    # code context for "<?= $input ?>"
+    },
+
+    "<?py x= ?>$x": {
+        "Kajiki": "Python"
+    },
+
+    "<p py:with='x= '>$x</p>": {
+        "Kajiki": "Python"
+    },
+
+    "1}<?py x= ?>$x": {
+        "Kajiki": "Python"      # code context for “${%s}” % user_input
+    },
+
+    "1}<p py:with='x= '>$x</p>": {
+        "Kajiki": "Python"      # code context for “${%s}” % user_input
     },
 
     "<% %>": {

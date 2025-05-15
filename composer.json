@@ -2,6 +2,7 @@
     "require": {
         "league/plates": "^3.6",
         "mustache/mustache": "^2.14",
-        "latte/latte": "^3.0"
+        "latte/latte": "^3.0",
+        "rain/raintpl": ">=3.0.0"
     }
 }

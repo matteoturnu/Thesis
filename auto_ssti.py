@@ -47,12 +47,14 @@ async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, 
         exception_in_legit = find_exception_in_response(legit_response)
         if exception_in_legit:
             print("EXCEPTION in LEGIT response.", legit_response)
+            print("Response after payload injection: ", response)
             return response, []
 
         expected_response = legit_response.replace(default_input, payload)
         exception = check_if_exception(response, expected_response, symbols)
         if exception:
-            print("EXCEPTION FOUND.", response)
+            print("EXCEPTION FOUND.")
+            print("Response after payload injection: ", response)
             return response, []
 
         modified_payloads = get_sanitized_payloads(response, expected_response, symbols, operation)
@@ -86,7 +88,8 @@ async def main():
             sanitized_payloads_by_symbols[symbols] = sanitized_payloads
 
         eng_names_lst = check_te_in_response(response, engines_dct)
-        # eng_name = ""
+
+        eng_names_lst = []  # uncomment to disable TE recognition in response
         if eng_names_lst:
             print(f"\nTemplate engine name(s) found in the response! Engine(s): {eng_names_lst}")
             scanned_symbols = get_previous_keys(te_symbols, symbols, include_current=True)
@@ -124,11 +127,13 @@ async def main():
 
 
 if __name__ == "__main__":
-    servers_lst = ["spitfire_tempeng/spitfire_server.py",
+    servers_lst = ["raintpl_tempeng/raintpl.php",
+                    "kajiki_tempeng/kajiki_server.py",
+                    "spitfire_tempeng/spitfire_server.py",
                     "plates_tempeng/plates_server.php",
                     "latte_tempeng/latte_server.php",
                     "quik_tempeng/server.py",
-                   "evoque_tempeng/server.py",
+                    "evoque_tempeng/server.py",
                    ]
 
     for server in servers_lst:
