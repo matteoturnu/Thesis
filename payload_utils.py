@@ -1,11 +1,10 @@
 import asyncio
-import difflib
-import random
 import re
 import string
 import urllib.parse
 import html
 from simple_utils import *
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 
 def create_payload(symbols):
@@ -13,9 +12,6 @@ def create_payload(symbols):
     num_1, num_2, _ = generate_numbers_for_product()
     operation = f"{num_1}*{num_2}"
 
-    """if " " in symbols:
-        payload = symbols.replace(" ", operation)
-    """
     if " " in symbols:
         # start splitting from right
         parts = symbols.rsplit(' ', 1)  # needed for #set $num= #$num" (Spitfire) since there are two spaces
@@ -45,13 +41,13 @@ def on_btn_request(dom_reloaded, obj):
 
 
 def on_link_request(result, obj):
+    # TODO: change function name as it's used also for GET requests (url request)
     async def is_request(request):
         if not result.done():
             result.set_result(True)
             obj["request_obj"] = request
 
     return lambda request: asyncio.create_task(is_request(request))
-
 
 def get_response_text(resp_future, resp_obj):
     async def on_response(response):
@@ -290,18 +286,44 @@ async def exec_payload_in_inputs(page, button_elem, payload, url):
     return html_resp
 
 
-def edit_url_query(url, query):
-    url, query_params = tuple(url.split("?"))
+def edit_url_query(url, new_query_value, target_parameter=None):
+    parsed_url = urlparse(url)
+    query_params = parse_qs(parsed_url.query)
+
+    if target_parameter:
+        query_params[target_parameter] = [new_query_value]
+    else:
+        for param_name in query_params:
+            query_params[param_name] = [new_query_value]
+
+    new_query = urlencode(query_params, doseq=True)
+    new_url = urlunparse((parsed_url.scheme, parsed_url.netloc, parsed_url.path, parsed_url.params,
+                          new_query, parsed_url.fragment))
+    return new_url
+
+
+"""
+def edit_url_query(url, query, target_parameter=None):
+    endpoint, query_params = tuple(url.split("?"))
     query_params = query_params.split("&")
     new_queries = "?"
-    for key_value in query_params:
-        key = key_value.split("=")[0]
-        new_queries += f"{key}={query}&"
+    if target_parameter is not None:
+        for key_value in query_params:
+            if target_parameter in key_value:
+                key_target = key_value.split("=")[0]
+                new_queries += f"{key_target}={query}&"
+            else:
+                new_queries += key_value + "&"
+    else:
+        for key_value in query_params:
+            key = key_value.split("=")[0]
+            new_queries += f"{key}={query}&"
 
-    # delete last "&" in the query
     enc_queries = urllib.parse.quote(new_queries[:-1], safe="*?=&")
-    new_url = url + enc_queries
+    new_url = endpoint + enc_queries
     return new_url
+"""
+
 
 
 async def exec_payload_in_link(page, link_elem, payload, url):
@@ -325,6 +347,7 @@ async def exec_payload_in_link(page, link_elem, payload, url):
         # done() happens when the task is completed or if it raised an exception
         # reset variable
         result = asyncio.Future()
+        await page.setRequestInterception(False)
 
     page.remove_listener("request", req_handler)
     if result.done():
@@ -334,25 +357,55 @@ async def exec_payload_in_link(page, link_elem, payload, url):
     return html_resp
 
 
-async def inject_payload(page, url, payload):
+async def exec_payload_in_url(page, attacked_parameter, payload, url):
+    html_resp = ""
+    new_url = edit_url_query(url, payload, attacked_parameter)
+
+    # setting response listener
+    resp_result = asyncio.Future()
+    resp_obj = {"response": None}
+    resp_handler = get_response_text(resp_result, resp_obj)
+
+    def filtered_handler(response):
+        if new_url in response.url and response.request.resourceType == "document":
+            resp_handler(response)
+
+    # page.once("response", one_time_handler)
+    page.on("response", filtered_handler)
+
+    await page.goto(new_url, waitUntil="domcontentloaded")
+    html_resp = await capture_response(resp_result, resp_obj)
+
+    page.remove_listener("response", filtered_handler)
+    return html_resp
+
+
+async def inject_payload(page, url, payload, request_type, attacked_parameter):
     await page.goto(url)
     html_resp = ""
 
-    buttons_lst = await page.querySelectorAll("input[type='submit'], button")
-    for button_idx in range(len(buttons_lst)):
-        button_elem = buttons_lst[button_idx]
-        # print("Current button: ", await page.evaluate('(btn)=>btn.id', button_elem))
-        current_html = await exec_payload_in_inputs(page, button_elem, payload, url)
-        html_resp += current_html
+    if request_type == "POST":
         buttons_lst = await page.querySelectorAll("input[type='submit'], button")
+        for button_idx in range(len(buttons_lst)):
+            button_elem = buttons_lst[button_idx]
+            # print("Current button: ", await page.evaluate('(btn)=>btn.id', button_elem))
+            current_html = await exec_payload_in_inputs(page, button_elem, payload, url)
+            html_resp += current_html
+            buttons_lst = await page.querySelectorAll("input[type='submit'], button")
 
-    links_lst = await page.querySelectorAll("a[href]")
-    for link_idx in range(len(links_lst)):
-        link_elem = links_lst[link_idx]
-        # print("Current link: ", await page.evaluate('(link)=>link.id', link_elem))
-        current_html = await exec_payload_in_link(page, link_elem, payload, url)
-        html_resp += current_html
         links_lst = await page.querySelectorAll("a[href]")
+        for link_idx in range(len(links_lst)):
+            link_elem = links_lst[link_idx]
+            print("Link number ", link_idx)
+            print("Current link: ", await page.evaluate('(link)=>link.outerHTML', link_elem))
+            current_html = await exec_payload_in_link(page, link_elem, payload, url)
+            html_resp += current_html
+            links_lst = await page.querySelectorAll("a[href]")
+
+    elif request_type == "GET":
+        html_resp = await exec_payload_in_url(page, attacked_parameter, payload, url)
+
+
 
     return html_resp
 
@@ -432,6 +485,10 @@ def store_symbols(symbols_lst, payloads_lst, new_symbols, new_payload):
 
 ############### TEST ##################
 if __name__ == "__main__":
+    url = "http://127.0.0.1:8000/index.php?mact=News,cntnt01,detail,0&cntnt01articleid=1&cntnt01detailtemplate=Simplex%20News%20Detail&cntnt01returnid=1"
+    new_url = edit_url_query(url, "string:{7*7}", "cntnt01detailtemplate")
+    print("New url: ", new_url)
+
     """
     old_html_lst = ["<p>Hello, <?7*7?></p>", "<p>Hello, <?7*7?>, <?7*7?></p>", "<p>Hello, <?7*7?>, <?7*7?>, <?7*7?></p>",
                     "<p>Hello, <?7*7?>, <?7*7?>, <?7*7?></p>",

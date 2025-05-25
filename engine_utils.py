@@ -70,7 +70,7 @@ def check_te_in_response(response, eng_lang_dct):
     eng_strings_found = list()
     # engine_found = ""
     for eng, lang in eng_lang_dct.items():
-        if re.search(eng, response, re.IGNORECASE):
+        if eng != "Any" and re.search(eng, response, re.IGNORECASE):
             # engine_found = eng
             eng_strings_found.append(eng)
 

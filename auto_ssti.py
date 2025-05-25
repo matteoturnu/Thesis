@@ -1,3 +1,5 @@
+from urllib.parse import urlparse, parse_qs
+
 from pyppeteer import launch
 from server_utils import *
 from payload_utils import *
@@ -6,14 +8,14 @@ from engine_utils import *
 
 
 
-async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, url):
+async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, url, request_type, attacked_parameter):
     # contains sanitized once
     modified_payloads = []
 
     payload, operation = create_payload(symbols)
     print(f"\nTrying symbols '{symbols}' with payload '{payload}'...")
 
-    response = await inject_payload(page, url, payload)
+    response = await inject_payload(page, url, payload, request_type, attacked_parameter)
     # print(response)
 
     result = str(eval(operation))
@@ -40,21 +42,26 @@ async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, 
         print("Failed injection.")
         # process to find if sanitization occurred
         # now inject legitimate data
-        default_input = "abcdefghijklmno"
-        legit_response = await inject_payload(page, url, default_input)
+        if request_type == "GET":
+            query_params = parse_qs(urlparse(url).query)
+            default_input = query_params.get(attacked_parameter, [None])[0]
+        elif request_type == "POST":
+            default_input = "abcdefghijklmno"
+
+        legit_response = await inject_payload(page, url, default_input, request_type, attacked_parameter)
         # build the expected html response when payload is used
 
         exception_in_legit = find_exception_in_response(legit_response)
         if exception_in_legit:
             print("EXCEPTION in LEGIT response.", legit_response)
-            print("Response after payload injection: ", response)
+            # print("Response after payload injection: ", response)
             return response, []
 
         expected_response = legit_response.replace(default_input, payload)
         exception = check_if_exception(response, expected_response, symbols)
         if exception:
             print("EXCEPTION FOUND.")
-            print("Response after payload injection: ", response)
+            # print("Response after payload injection: ", response)
             return response, []
 
         modified_payloads = get_sanitized_payloads(response, expected_response, symbols, operation)
@@ -63,12 +70,14 @@ async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, 
     return response, modified_payloads
 
 
-async def main():
+async def main(url, request_type, attacked_parameter):
+    """
     url = "http://127.0.0.1:8080"
     # wait until the server is ready to send responses
     await check_server_ready(url)
+    """
     # launch browser without GUI
-    browser = await launch({"headless": True})
+    browser = await launch({"headless": False})
     page = await browser.newPage()
 
     print("\n-----------------------")
@@ -82,14 +91,15 @@ async def main():
     break_from_symbols_for = False
     for symbols in te_symbols:
     # for symbols in ["#set@a= :@a", "1}#set@a= :@a", "( )", ")( ", "<?= ?>", "1?><?= "]:
-        response, sanitized_payloads = await ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, url)
+        response, sanitized_payloads = await ssti_attack(success_symbols_lst, success_payloads_lst,
+                                                         symbols, page, url, request_type, attacked_parameter)
 
         if sanitized_payloads:
             sanitized_payloads_by_symbols[symbols] = sanitized_payloads
 
         eng_names_lst = check_te_in_response(response, engines_dct)
 
-        eng_names_lst = []  # uncomment to disable TE recognition in response
+        # eng_names_lst = []  # uncomment to disable TE recognition in response
         if eng_names_lst:
             print(f"\nTemplate engine name(s) found in the response! Engine(s): {eng_names_lst}")
             scanned_symbols = get_previous_keys(te_symbols, symbols, include_current=True)
@@ -98,7 +108,8 @@ async def main():
                 for tags in eng_symbols:
                     if tags not in scanned_symbols:
                         scanned_symbols.append(tags)
-                        response, new_sanit_payloads = await ssti_attack(success_symbols_lst, success_payloads_lst, tags, page, url)
+                        response, new_sanit_payloads = await ssti_attack(success_symbols_lst, success_payloads_lst,
+                                                                         tags, page, url, request_type, attacked_parameter)
                         if new_sanit_payloads:
                             sanitized_payloads_by_symbols[tags] = new_sanit_payloads
             break_from_symbols_for = True
@@ -127,11 +138,13 @@ async def main():
 
 
 if __name__ == "__main__":
-    servers_lst = ["raintpl_tempeng/raintpl.php",
+
+    """
+    servers_lst = ["latte_tempeng/latte_server.php",
+                   "raintpl_tempeng/raintpl.php",
                     "kajiki_tempeng/kajiki_server.py",
                     "spitfire_tempeng/spitfire_server.py",
                     "plates_tempeng/plates_server.php",
-                    "latte_tempeng/latte_server.php",
                     "quik_tempeng/server.py",
                     "evoque_tempeng/server.py",
                    ]
@@ -141,13 +154,47 @@ if __name__ == "__main__":
         server_process = launch_server(server)  # only needed to automatically launch servers from here
 
         print(f"SCANNING URL '{server}' ...")
-        asyncio.run(main(), debug=True)
+        # asyncio.run(main(), debug=True)
+        asyncio.run(main("http://127.0.0.1:8080", "POST", None), debug=True)
         # TODO: solve problems with same PHP engine being run repeatedly (PHP process to be killed)
         shutdown_server(server_process)
         # allow the user to stop execution before studying new server
         if server != servers_lst[-1]:
             while choice not in ["Y", "N"]:
                 choice = input("\nWould you like to go on with the next server? (Y[Yes]/N[No]) ").upper()
+
+        if choice == "N":
+            break
+    """
+
+
+    # attacked_parameter = None in POST requests (maybe)
+    tests_lst = [{"request_type": "POST",
+                  "url": "http://127.0.0.1:8000/index.php?mact=News,cntnt01,detail,0&cntnt01articleid=1&cntnt01detailtemplate=Simplex%20News%20Detail&cntnt01returnid=1",
+                  },
+                 {"request_type": "GET",
+                  "url": "http://127.0.0.1:8000/index.php?mact=News,cntnt01,detail,0&cntnt01articleid=1&cntnt01detailtemplate=Simplex%20News%20Detail&cntnt01returnid=1",
+                  "attacked_parameter": "cntnt01detailtemplate"},
+                 ]
+    for test in tests_lst:
+        choice = ""
+        url = test["url"]
+        request_type = test["request_type"]
+        if request_type == "GET":
+            attacked_parameter = test["attacked_parameter"]
+        else:
+            attacked_parameter = None
+
+        print(f"SCANNING URL '{url}' for a {request_type} request ...")
+        if attacked_parameter is not None:
+            print(f"Url parameter to test: {test['attacked_parameter']}")
+
+        asyncio.run(main(url, request_type, attacked_parameter), debug=True)
+
+        # allow the user to stop execution before studying new server
+        if test != tests_lst[-1]:
+            while choice not in ["Y", "N"]:
+                choice = input("\nWould you like to go on with the next url? (Y[Yes]/N[No]) ").upper()
 
         if choice == "N":
             break

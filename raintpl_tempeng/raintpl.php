@@ -8,7 +8,6 @@
                      "cache_dir" => "vendor/rain/raintpl/cache/"
     );
     Tpl::configure( $config );
-
     $t = new Tpl;
 
     if ($_POST) {

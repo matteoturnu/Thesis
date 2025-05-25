@@ -53,6 +53,10 @@ te_symbols = {
         "Dust": "JavaScript",
         "Razor": ".NET"
     },
+
+    "string:{ }": {
+        "Smarty": "PHP"
+    },
     
     "1}{ ": {
         "Latte": "PHP",     # code context for "{= $user_input}"
