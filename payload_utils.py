@@ -43,14 +43,19 @@ def on_btn_request(dom_reloaded, obj):
 def on_link_request(result, obj):
     # TODO: change function name as it's used also for GET requests (url request)
     async def is_request(request):
-        if not result.done():
-            result.set_result(True)
-            obj["request_obj"] = request
+        print("[Request]", request.method, request.url)
+        try:
+            if not result.done():
+                obj["request_obj"] = request
+                result.set_result(True)
+        except Exception as e:
+            print(f"[ERROR] Exception inside is_request: {e}")
 
     return lambda request: asyncio.create_task(is_request(request))
 
 def get_response_text(resp_future, resp_obj):
     async def on_response(response):
+        print("[Response]", response.status, response.url)
         if not resp_future.done():
             try:
                 html_txt = await response.text()
@@ -84,6 +89,7 @@ async def compute_request(page, payload, handler_obj, resp_handler, resp_future,
         page.once("response", resp_handler)
         # new url obtained
         new_url = edit_url_query(req_url, payload)
+        print("New link for injection: ", new_url)
         await handler_obj["request_obj"].continue_({"url": new_url})
         await page.setRequestInterception(False)
         # resp_future may need to be returned! (global)
@@ -263,7 +269,7 @@ async def exec_payload_in_inputs(page, button_elem, payload, url):
     try:
         await asyncio.wait_for(dom_reloaded, 3)
     except asyncio.TimeoutError:
-        print("No request within 3 seconds")
+        print("[TimeoutError] No request within 3 seconds")
         # done() happens when the task is completed or if it raised an exception
         # reset variable
         dom_reloaded = asyncio.Future()
@@ -329,9 +335,9 @@ def edit_url_query(url, query, target_parameter=None):
 async def exec_payload_in_link(page, link_elem, payload, url):
     html_resp = ""
 
-    result = asyncio.Future()
-    handler_obj = {"request_obj": None}
-    req_handler = on_link_request(result, handler_obj)
+    req_future = asyncio.Future()
+    req_obj = {"request_obj": None}
+    req_handler = on_link_request(req_future, req_obj)
     await page.setRequestInterception(True)
     page.on("request", req_handler)
 
@@ -339,21 +345,27 @@ async def exec_payload_in_link(page, link_elem, payload, url):
     resp_obj = {"response": None}
     resp_handler = get_response_text(resp_future, resp_obj)
 
-    await link_elem.click()
     try:
-        await asyncio.wait_for(result, 3)
+        # execute instructions concurrently
+        # wait until both are completed
+        await asyncio.gather(
+            page.evaluate('(el) => el.click()', link_elem),
+            asyncio.wait_for(req_future, 5)
+        )
     except asyncio.TimeoutError:
-        print("No request within 3 seconds")
+        print("[TimeoutError] No request within 5 seconds")
         # done() happens when the task is completed or if it raised an exception
         # reset variable
-        result = asyncio.Future()
+        req_future = asyncio.Future()
         await page.setRequestInterception(False)
 
     page.remove_listener("request", req_handler)
-    if result.done():
-        html_resp = await compute_request(page, payload, handler_obj, resp_handler, resp_future, resp_obj)
+    if req_future.done():
+        html_resp = await compute_request(page, payload, req_obj, resp_handler, resp_future, resp_obj)
 
+    # go back to main page
     await page.goto(url)
+
     return html_resp
 
 
@@ -385,22 +397,60 @@ async def inject_payload(page, url, payload, request_type, attacked_parameter):
     html_resp = ""
 
     if request_type == "POST":
-        buttons_lst = await page.querySelectorAll("input[type='submit'], button")
-        for button_idx in range(len(buttons_lst)):
-            button_elem = buttons_lst[button_idx]
-            # print("Current button: ", await page.evaluate('(btn)=>btn.id', button_elem))
-            current_html = await exec_payload_in_inputs(page, button_elem, payload, url)
-            html_resp += current_html
+        processed_elements = []
+        button_idx = 0
+        while True:
             buttons_lst = await page.querySelectorAll("input[type='submit'], button")
+            if button_idx >= len(buttons_lst):
+                break
 
-        links_lst = await page.querySelectorAll("a[href]")
+            button_elem = buttons_lst[button_idx]
+            button_outer_html = await page.evaluate('(el) => el.outerHTML', button_elem)
+            # avoid considering previous scanned buttons again
+            if button_outer_html not in processed_elements:
+                processed_elements.append(button_outer_html)
+                print("Button number ", button_idx)
+                print("Current button: ", button_outer_html)
+                current_html = await exec_payload_in_inputs(page, button_elem, payload, url)
+                html_resp += current_html
+
+            button_idx += 1
+
+
+        processed_elements = []
+        link_idx = 0
+        while True:
+            links_lst = await page.querySelectorAll("a[href]")
+            if link_idx >= len(links_lst):
+                break
+
+            link_elem = links_lst[link_idx]
+            link_outer_html = await page.evaluate('(el) => el.outerHTML', link_elem)
+            # avoid considering previous scanned links again
+            if link_outer_html not in processed_elements:
+                processed_elements.append(link_outer_html)
+                print("Link number ", link_idx)
+                print("Current link: ", link_outer_html)
+                current_html = await exec_payload_in_link(page, link_elem, payload, url)
+                html_resp += current_html
+
+            link_idx += 1
+
+
+
+        """
         for link_idx in range(len(links_lst)):
             link_elem = links_lst[link_idx]
-            print("Link number ", link_idx)
-            print("Current link: ", await page.evaluate('(link)=>link.outerHTML', link_elem))
-            current_html = await exec_payload_in_link(page, link_elem, payload, url)
-            html_resp += current_html
-            links_lst = await page.querySelectorAll("a[href]")
+            link_outer_html = await page.evaluate('(el) => el.outerHTML', link_elem)
+            if link_outer_html not in processed_elements:
+                processed_elements.append(link_outer_html)
+                print("Link number ", link_idx)
+                print("Current link: ", link_outer_html)
+                current_html = await exec_payload_in_link(page, link_elem, payload, url)
+                html_resp += current_html
+                links_lst = await page.querySelectorAll("a[href]")
+        """
+
 
     elif request_type == "GET":
         html_resp = await exec_payload_in_url(page, attacked_parameter, payload, url)
