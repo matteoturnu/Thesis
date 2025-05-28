@@ -265,14 +265,20 @@ async def exec_payload_in_inputs(page, button_elem, payload, url):
     resp_obj = {"response": None}
     resp_handler = get_response_text(resp_future, resp_obj)
 
-    await button_elem.click()
     try:
-        await asyncio.wait_for(dom_reloaded, 3)
+        # execute instructions concurrently
+        # wait until both are completed
+        await asyncio.gather(
+            # page.evaluate('(el) => el.click()', button_elem),
+            button_elem.click(),
+            asyncio.wait_for(dom_reloaded, 5)
+        )
     except asyncio.TimeoutError:
-        print("[TimeoutError] No request within 3 seconds")
+        print("[TimeoutError] No request within 5 seconds")
         # done() happens when the task is completed or if it raised an exception
         # reset variable
         dom_reloaded = asyncio.Future()
+        await page.setRequestInterception(False)
 
     page.remove_listener("request", req_handler)
     if dom_reloaded.done() and dom_reloaded.result() is True:
@@ -306,30 +312,6 @@ def edit_url_query(url, new_query_value, target_parameter=None):
     new_url = urlunparse((parsed_url.scheme, parsed_url.netloc, parsed_url.path, parsed_url.params,
                           new_query, parsed_url.fragment))
     return new_url
-
-
-"""
-def edit_url_query(url, query, target_parameter=None):
-    endpoint, query_params = tuple(url.split("?"))
-    query_params = query_params.split("&")
-    new_queries = "?"
-    if target_parameter is not None:
-        for key_value in query_params:
-            if target_parameter in key_value:
-                key_target = key_value.split("=")[0]
-                new_queries += f"{key_target}={query}&"
-            else:
-                new_queries += key_value + "&"
-    else:
-        for key_value in query_params:
-            key = key_value.split("=")[0]
-            new_queries += f"{key}={query}&"
-
-    enc_queries = urllib.parse.quote(new_queries[:-1], safe="*?=&")
-    new_url = endpoint + enc_queries
-    return new_url
-"""
-
 
 
 async def exec_payload_in_link(page, link_elem, payload, url):
@@ -436,22 +418,6 @@ async def inject_payload(page, url, payload, request_type, attacked_parameter):
 
             link_idx += 1
 
-
-
-        """
-        for link_idx in range(len(links_lst)):
-            link_elem = links_lst[link_idx]
-            link_outer_html = await page.evaluate('(el) => el.outerHTML', link_elem)
-            if link_outer_html not in processed_elements:
-                processed_elements.append(link_outer_html)
-                print("Link number ", link_idx)
-                print("Current link: ", link_outer_html)
-                current_html = await exec_payload_in_link(page, link_elem, payload, url)
-                html_resp += current_html
-                links_lst = await page.querySelectorAll("a[href]")
-        """
-
-
     elif request_type == "GET":
         html_resp = await exec_payload_in_url(page, attacked_parameter, payload, url)
 
@@ -473,25 +439,12 @@ def validate_injection(op_res, html_resp, symbols):
         for match in res_matches:
             start, end = match.start(), match.end()
 
-            # if payload is contained in the symbols, those symbols are treated as simple text by engine
-            # for now, not considering symbols containing more than 2 spaces
-            # UPDATE: NO! Injection is successful even if not due to those symbols but you would
-            """
-            if symbols != " " and len(symbols_split) == 2:
-                symb_start = symbols_split[0]
-                symb_end = symbols_split[1]
-                if html_resp[start-len(symb_start):start] == symb_start and html_resp[end:end+len(symb_end)] == symb_end:
-                    break
-            """
-
             while start > prev_end and html_resp[start - 1] != ">":
                 start -= 1
             while end < len(html_resp) and html_resp[end] != "<":
                 end += 1
             prev_end = end
 
-            # start, end = max(0, match.start() - 20), min(len(html_resp), match.end() + 20)
-            # print(f"Match: {html_resp[start:end]}")
             responses_lst.append(html_resp[start:end])
 
     return success, responses_lst

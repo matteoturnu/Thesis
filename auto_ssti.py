@@ -89,8 +89,8 @@ async def main(url, request_type, attacked_parameter):
     engines_dct = load_engines()
     sanitized_payloads_by_symbols = dict()
     break_from_symbols_for = False
-    # for symbols in te_symbols:
-    for symbols in ["string:{ }", "{ }"]:
+    for symbols in te_symbols:
+    # for symbols in ["string:{ }", "{ }"]:
         response, sanitized_payloads = await ssti_attack(success_symbols_lst, success_payloads_lst,
                                                          symbols, page, url, request_type, attacked_parameter)
 
@@ -139,7 +139,7 @@ async def main(url, request_type, attacked_parameter):
 
 if __name__ == "__main__":
 
-    """
+    # """
     servers_lst = ["latte_tempeng/latte_server.php",
                    "raintpl_tempeng/raintpl.php",
                     "kajiki_tempeng/kajiki_server.py",
@@ -165,10 +165,10 @@ if __name__ == "__main__":
 
         if choice == "N":
             break
-        """
+        # """
 
 
-    # """
+    """
     # attacked_parameter = None in POST requests (maybe)
     tests_lst = [{"request_type": "POST",
                   "url": "http://127.0.0.1:8000/index.php?mact=News,cntnt01,detail,0&cntnt01articleid=1&cntnt01detailtemplate=Simplex%20News%20Detail&cntnt01returnid=1",
@@ -199,5 +199,5 @@ if __name__ == "__main__":
 
         if choice == "N":
             break
-        # """
+        """
 
