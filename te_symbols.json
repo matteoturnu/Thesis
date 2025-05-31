@@ -37,12 +37,9 @@
     "Razor": ".NET"
   },
   "{ }": {
-    "Smarty": "PHP",
     "Latte": "PHP",
     "Dust": "JavaScript",
-    "Razor": ".NET"
-  },
-  "string:{ }": {
+    "Razor": ".NET",
     "Smarty": "PHP"
   },
   "1}{ ": {
@@ -227,5 +224,8 @@
   },
   "#set $num= #$num": {
     "Spitfire": "Python"
+  },
+  "string:{ }": {
+    "Smarty": "PHP"
   }
 }

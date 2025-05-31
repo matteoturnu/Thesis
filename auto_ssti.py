@@ -39,7 +39,7 @@ async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, 
         print("Stored payload: ", success_payloads_lst)
     else:
         print("Failed injection.")
-        print("Response: ", response)
+        # print("Response: ", response)
         # process to find if sanitization occurred
         # now inject legitimate data
         if injection_point == "URL":
@@ -53,14 +53,14 @@ async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, 
 
         exception_in_legit = find_exception_in_response(legit_response)
         if exception_in_legit:
-            print("EXCEPTION in LEGIT response.", legit_response)
+            # print("EXCEPTION in LEGIT response.", legit_response)
             # print("Response after payload injection: ", response)
             return response, []
 
         expected_response = legit_response.replace(default_input, payload)
         exception = check_if_exception(response, expected_response, symbols)
         if exception:
-            print("EXCEPTION FOUND.")
+            # print("EXCEPTION FOUND.")
             # print("Response after payload injection: ", response)
             return response, []
 
@@ -106,7 +106,7 @@ async def main(url, injection_point, param_to_attack):
     await check_server_ready(url)
     """
     # launch browser without GUI
-    browser = await launch({"headless": False})
+    browser = await launch({"headless": True})
     page = await browser.newPage()
 
     print("\n-----------------------")
@@ -232,28 +232,30 @@ if __name__ == "__main__":
         eng_lang = sys.argv[2]
         if ":" not in eng_lang:
             print(f"\t{sys.argv[0]} --add-engine <engine>:<language>")
-            sys.exit()
-        new_eng, new_lang = eng_lang.split(":")
+            sys.exit(1)
 
+        new_eng_lang = eng_lang.split(":")
+        if len(new_eng_lang) != 2:
+            print(f"\t{sys.argv[0]} --add-engine <engine>:<language>")
+            sys.exit(2)
+
+        new_eng, new_lang = new_eng_lang
         te_symbols = read_from_json("te_symbols.json")
         engines = load_engines(te_symbols)
-        #engines_lowercase = {k.lower(): v for k, v in engines.items()}
         # map key lowercase to key case saved in json
         engine_key_map = {k.lower(): k for k in engines}
-        # TODO: add check to avoid upper-case/lower-case mismatches
+
         if new_eng.lower() in engine_key_map:
             # get the original case of the engine name saved in json file
             new_eng = engine_key_map[new_eng.lower()]
             lang = engines[new_eng]
             print(f"Template engine '{new_eng}' ({lang}) is already supported.")
-            sys.exit()
+            sys.exit(3)
 
-        # allowed_languages_lowercase = [lang.lower() for lang in allowed_languages]
-        # if new_lang.lower() not in allowed_languages_lowercase:
         lang_key_map = {e.lower(): e for e in allowed_languages}
         if new_lang.lower() not in lang_key_map:
             print(f"Programming language '{new_lang}' is not supported.")
-            sys.exit()
+            sys.exit(4)
 
         add_template_engine(new_eng, new_lang, te_symbols)
 

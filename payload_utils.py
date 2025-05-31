@@ -58,7 +58,7 @@ def on_link_request(result, obj):
 
 def get_response_text(resp_future, resp_obj):
     async def on_response(response):
-        print("[Response]", response.status, response.url)
+        # print("[Response]", response.status, response.url)
         if not resp_future.done():
             try:
                 html_txt = await response.text()
