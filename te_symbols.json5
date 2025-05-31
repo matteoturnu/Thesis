@@ -1,6 +1,6 @@
-te_symbols = {
+{
     " ": {
-        "Any": "Any"    # code context
+        "Any": "Any"    // code context
     },
 
     "$ ": {
@@ -18,20 +18,20 @@ te_symbols = {
 
     "@ ": {
         "SquirrellyJS": "JavaScript",
-        "Plates": "PHP",     # code context for "<?= $input ?>"
-        "Latte": "PHP"       # code context for "{= $input }"
+        "Plates": "PHP",     // code context for "<?= $input ?>"
+        "Latte": "PHP"       // code context for "{= $input }"
     },
 
     "#set@a= :@a": {
-        "Quik": "Python",
+        "Quik": "Python"
     },
 
     "1}#set@a= :@a": {
-        "Quik": "Python"    # code context for ' "@%s" % input ' and ' "@{%s}" % input '
+        "Quik": "Python"    // code context for ' "@%s" % input ' and ' "@{%s}" % input '
     },
 
     "| ": {
-        "SquirrellyJS": "JavaScript",
+        "SquirrellyJS": "JavaScript"
     },
 
     "= ": {
@@ -56,9 +56,9 @@ te_symbols = {
     "string:{ }": {
         "Smarty": "PHP"
     },
-    
+
     "1}{ ": {
-        "Latte": "PHP",     # code context for "{= $user_input}"
+        "Latte": "PHP"     // code context for "{= $user_input}"
     },
 
     "{@ }": {
@@ -67,7 +67,7 @@ te_symbols = {
     },
 
     "1}{@ ": {
-        "Latte": "PHP",     # code context for "{= $user_input}"
+        "Latte": "PHP"     // code context for "{= $user_input}"
     },
 
     "{= }": {
@@ -75,7 +75,7 @@ te_symbols = {
     },
 
     "1}{= ": {
-        "Latte": "PHP"      # code context for "{= $user_input}"
+        "Latte": "PHP"      // code context for "{= $user_input}"
     },
 
     "{function=\"print( )\"}": {
@@ -83,15 +83,15 @@ te_symbols = {
     },
 
     "a}{function=\"print( )\"": {
-        "RainTPL": "PHP"    # code context for 'Hello, {$' . $user . '} '
+        "RainTPL": "PHP"    // code context for 'Hello, {$' . $user . '} '
     },
 
     "{# #}": {
-        "RainTPL": "PHP"    # syntax for constants
+        "RainTPL": "PHP"    // syntax for constants
     },
 
     "a}{# #": {
-        "RainTPL": "PHP"    # syntax for constants; code context for 'Hello, {$' . $user . '} '
+        "RainTPL": "PHP"    // syntax for constants; code context for 'Hello, {$' . $user . '} '
     },
 
     "${ }": {
@@ -100,8 +100,8 @@ te_symbols = {
         "Thymeleaf": "Java",
         "FreeMarker": "Java",
         "Marko": "JavaScript",
-        "Plates": "PHP",     # code context for "<?= $input ?>"
-        "Latte": "PHP",       # code context for "{= $input }"
+        "Plates": "PHP",      // code context for "<?= $input ?>"
+        "Latte": "PHP",       // code context for "{= $input }"
         "Kajiki": "Python"
     },
 
@@ -112,28 +112,28 @@ te_symbols = {
         "Marko": "JavaScript"
     },
     "1}${ ": {
-        "Evoque": "Python",  # code context for "@{%s}" % input
-        "Kajiki": "Python",  # code context for "${%s}" % input
+        "Evoque": "Python",  // code context for "@{%s}" % input
+        "Kajiki": "Python",  // code context for "${%s}" % input
     },
 
     "${int( )}": {
-        "Spitfire": "Python",
+        //"Spitfire": "Python",
         "Evoque": "Python",
         "Kajiki": "Python"
     },
 
     "1}${int( )": {
         "Evoque": "Python",
-        "Kajiki": "Python"      # code context for "${%s}" % input
+        "Kajiki": "Python"      // code context for "${%s}" % input
     },
 
     "{${ }}": {
-        "RainTPL": "PHP"    # using both template syntax and PHP syntax
+        "RainTPL": "PHP"    // using both template syntax and PHP syntax
     },
 
-    "#set $num= #$num": {
+    /*"#set $num= #$num": {
         "Spitfire": "Python"
-    },
+    }, */
 
     "#{ }": {
         "Thymeleaf": "Java",
@@ -204,19 +204,19 @@ te_symbols = {
     },
 
     "<? ?>": {
-        "Genshi and Kid": "Python",
+        "Genshi and Kid": "Python"
     },
 
     "?><? ": {
-        "Genshi and Kid": "Python",
+        "Genshi and Kid": "Python"
     },
 
     "<?= ?>": {
-        "Plates": "PHP"  # Note: short notation for echo. Functions work as well
+        "Plates": "PHP"  // Note: short notation for echo. Functions work as well
     },
 
-    "1?><?= ": {    # can't close first statement without outputting something (1 in this case)
-        "Plates": "PHP"    # code context for "<?= $input ?>"
+    "1?><?= ": {          // can't close first statement without outputting something (1 in this case)
+        "Plates": "PHP"    // code context for "<?= $input ?>"
     },
 
     "<?py x= ?>$x": {
@@ -228,11 +228,11 @@ te_symbols = {
     },
 
     "1}<?py x= ?>$x": {
-        "Kajiki": "Python"      # code context for “${%s}” % user_input
+        "Kajiki": "Python"      // code context for “${%s}” % user_input
     },
 
     "1}<p py:with='x= '>$x</p>": {
-        "Kajiki": "Python"      # code context for “${%s}” % user_input
+        "Kajiki": "Python"      // code context for “${%s}” % user_input
     },
 
     "<% %>": {

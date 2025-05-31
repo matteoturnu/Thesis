@@ -1,3 +1,4 @@
+import json
 from urllib.parse import urlparse, parse_qs
 
 from pyppeteer import launch
@@ -6,16 +7,14 @@ from payload_utils import *
 from engine_utils import *
 
 
-
-
-async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, url, request_type, attacked_parameter):
+async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, url, injection_point, param_to_attack):
     # contains sanitized once
     modified_payloads = []
 
     payload, operation = create_payload(symbols)
     print(f"\nTrying symbols '{symbols}' with payload '{payload}'...")
 
-    response = await inject_payload(page, url, payload, request_type, attacked_parameter)
+    response = await inject_payload(page, url, payload, injection_point, param_to_attack)
     # print(response)
 
     result = str(eval(operation))
@@ -40,15 +39,16 @@ async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, 
         print("Stored payload: ", success_payloads_lst)
     else:
         print("Failed injection.")
+        print("Response: ", response)
         # process to find if sanitization occurred
         # now inject legitimate data
-        if request_type == "GET":
+        if injection_point == "URL":
             query_params = parse_qs(urlparse(url).query)
-            default_input = query_params.get(attacked_parameter, [None])[0]
-        elif request_type == "POST":
+            default_input = query_params.get(param_to_attack, [None])[0]
+        elif injection_point == "PAGE":
             default_input = "abcdefghijklmno"
 
-        legit_response = await inject_payload(page, url, default_input, request_type, attacked_parameter)
+        legit_response = await inject_payload(page, url, default_input, injection_point, param_to_attack)
         # build the expected html response when payload is used
 
         exception_in_legit = find_exception_in_response(legit_response)
@@ -70,7 +70,36 @@ async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, 
     return response, modified_payloads
 
 
-async def main(url, request_type, attacked_parameter):
+def add_template_engine(new_engine, new_language, te_symbols_dct):
+    supported_symbols = []
+    print(f"Template engine to add: {new_engine} ({new_language})")
+    user_input = ""
+    print("Type the symbols supported by the new template engine (press 0 to finish)")
+    print("Include a space where the string should be inserted. Ex: '{ }' for symbols '{}'")
+    i = 0
+    while user_input != "0":
+        user_input = input(f"Symbols ({i+1}): ")
+        if user_input != 0 and " " in user_input:
+            supported_symbols.append(user_input)
+            i += 1
+
+    for new_symbs in supported_symbols:
+        if new_symbs in te_symbols_dct:
+            # just add the engine in the already-existing symbols dict
+            te_symbols_dct[new_symbs][new_engine] = new_language
+        else:
+            # add dictionary with new symbols and new template engine
+            te_symbols_dct[new_symbs] = {new_engine: new_language}
+
+    if not supported_symbols:
+        print(f"No symbols added. Engine has not been added.")
+    else:
+        write_to_json("te_symbols.json", te_symbols_dct)
+        print(f"Engine '{new_engine}' ({new_language}) added!")
+
+
+
+async def main(url, injection_point, param_to_attack):
     """
     url = "http://127.0.0.1:8080"
     # wait until the server is ready to send responses
@@ -84,22 +113,24 @@ async def main(url, request_type, attacked_parameter):
     print("--- DETECTION PHASE ---")
     print("-----------------------")
 
+    te_symbols = read_from_json("te_symbols.json")
+    engines_dct = load_engines(te_symbols)
+
     success_symbols_lst = []
     success_payloads_lst = []
-    engines_dct = load_engines()
     sanitized_payloads_by_symbols = dict()
     break_from_symbols_for = False
     for symbols in te_symbols:
-    # for symbols in ["string:{ }", "{ }"]:
+        # for symbols in ["string:{ }", "{ }"]:
         response, sanitized_payloads = await ssti_attack(success_symbols_lst, success_payloads_lst,
-                                                         symbols, page, url, request_type, attacked_parameter)
+                                                         symbols, page, url, injection_point, param_to_attack)
 
         if sanitized_payloads:
             sanitized_payloads_by_symbols[symbols] = sanitized_payloads
 
         eng_names_lst = check_te_in_response(response, engines_dct)
 
-        # eng_names_lst = []  # uncomment to disable TE recognition in response
+        eng_names_lst = []  # uncomment to disable TE recognition in response
         if eng_names_lst:
             print(f"\nTemplate engine name(s) found in the response! Engine(s): {eng_names_lst}")
             scanned_symbols = get_previous_keys(te_symbols, symbols, include_current=True)
@@ -109,14 +140,14 @@ async def main(url, request_type, attacked_parameter):
                     if tags not in scanned_symbols:
                         scanned_symbols.append(tags)
                         response, new_sanit_payloads = await ssti_attack(success_symbols_lst, success_payloads_lst,
-                                                                         tags, page, url, request_type, attacked_parameter)
+                                                                         tags, page, url, injection_point,
+                                                                         param_to_attack)
                         if new_sanit_payloads:
                             sanitized_payloads_by_symbols[tags] = new_sanit_payloads
             break_from_symbols_for = True
         # no need to consider sanitized payloads in a response with exception
         if break_from_symbols_for:
             break
-
 
     await browser.close()
 
@@ -136,10 +167,9 @@ async def main(url, request_type, attacked_parameter):
         print(sanitized_payloads_by_symbols)
 
 
-
 if __name__ == "__main__":
 
-    # """
+    """
     servers_lst = ["latte_tempeng/latte_server.php",
                    "raintpl_tempeng/raintpl.php",
                     "kajiki_tempeng/kajiki_server.py",
@@ -165,17 +195,82 @@ if __name__ == "__main__":
 
         if choice == "N":
             break
-        # """
+        """
 
+    supported_args = ["--url", "--param", "--add-engine"]
+    # ex: auto_ssti.py --url ... --param ...
+    # print(len(sys.argv))
+    if len(sys.argv) < 3 or len(sys.argv) > 5:
+        print(f"Usage: {sys.argv[0]} {supported_args[0]} <url> [{supported_args[1]} <param>]")
+        print(f"\t{sys.argv[0]} {supported_args[2]} <engine>:<language>")
+        sys.exit()
+
+    # --url
+    if sys.argv[1] == supported_args[0]:
+        url = sys.argv[2]
+        if len(sys.argv) == 5:
+            param_to_attack = sys.argv[4]
+            if param_to_attack not in url:
+                print(f"URL does not include the parameter '{param_to_attack}'")
+                sys.exit()
+
+            injection_point = "URL"
+        else:
+            injection_point = "PAGE"
+            param_to_attack = None
+
+        print(f"Scanning URL '{url}' for injection in {injection_point} elements...")
+        if param_to_attack is not None:
+            print(f"Url parameter to test: {param_to_attack}")
+
+        asyncio.run(main(url, injection_point, param_to_attack), debug=True)
+
+    # --add-engine
+    if sys.argv[1] == supported_args[2]:
+        allowed_languages = ["Java", "C", "C#", "VB.NET", "PHP", "Python", ".NET", "Perl", "CFML", "JavaScript",
+                             "Ruby", "Go", "Rust", "F#", "Golang"]
+        eng_lang = sys.argv[2]
+        if ":" not in eng_lang:
+            print(f"\t{sys.argv[0]} --add-engine <engine>:<language>")
+            sys.exit()
+        new_eng, new_lang = eng_lang.split(":")
+
+        te_symbols = read_from_json("te_symbols.json")
+        engines = load_engines(te_symbols)
+        #engines_lowercase = {k.lower(): v for k, v in engines.items()}
+        # map key lowercase to key case saved in json
+        engine_key_map = {k.lower(): k for k in engines}
+        # TODO: add check to avoid upper-case/lower-case mismatches
+        if new_eng.lower() in engine_key_map:
+            # get the original case of the engine name saved in json file
+            new_eng = engine_key_map[new_eng.lower()]
+            lang = engines[new_eng]
+            print(f"Template engine '{new_eng}' ({lang}) is already supported.")
+            sys.exit()
+
+        # allowed_languages_lowercase = [lang.lower() for lang in allowed_languages]
+        # if new_lang.lower() not in allowed_languages_lowercase:
+        lang_key_map = {e.lower(): e for e in allowed_languages}
+        if new_lang.lower() not in lang_key_map:
+            print(f"Programming language '{new_lang}' is not supported.")
+            sys.exit()
+
+        add_template_engine(new_eng, new_lang, te_symbols)
+
+
+    ######################
 
     """
-    # attacked_parameter = None in POST requests (maybe)
-    tests_lst = [{"request_type": "POST",
-                  "url": "http://127.0.0.1:8000/index.php?mact=News,cntnt01,detail,0&cntnt01articleid=1&cntnt01detailtemplate=Simplex%20News%20Detail&cntnt01returnid=1",
-                  },
-                 {"request_type": "GET",
+    tests_lst = [{"request_type": "GET",
                   "url": "http://127.0.0.1:8000/index.php?mact=News,cntnt01,detail,0&cntnt01articleid=1&cntnt01detailtemplate=Simplex%20News%20Detail&cntnt01returnid=1",
                   "attacked_parameter": "cntnt01detailtemplate"},
+                 {"request_type": "GET",
+                  "url": "http://127.0.0.1:8000/?any_par=something",
+                  "attacked_parameter": "any_par"},
+                {"request_type": "POST",
+                  "url": "http://127.0.0.1:8000/index.php?mact=News,cntnt01,detail,0&cntnt01articleid=1&cntnt01detailtemplate=Simplex%20News%20Detail&cntnt01returnid=1",
+                  },
+
                  ]
     for test in tests_lst:
         choice = ""
@@ -199,5 +294,4 @@ if __name__ == "__main__":
 
         if choice == "N":
             break
-        """
-
+    """

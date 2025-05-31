@@ -1,10 +1,11 @@
 import re
+import json5
 from te_symbols import te_symbols
 from simple_utils import get_html_diffs
 
-def load_engines():
+def load_engines(te_dct):
     te_lst = dict()
-    for _, engines in te_symbols.items():
+    for _, engines in te_dct.items():
         te_lst.update(engines)
     return te_lst
 
@@ -67,6 +68,7 @@ def find_template_engines(success_symbols):
 
 
 def check_te_in_response(response, eng_lang_dct):
+    # TODO: usually problematic with words like "templates" and the supported engine "Plates"
     eng_strings_found = list()
     # engine_found = ""
     for eng, lang in eng_lang_dct.items():

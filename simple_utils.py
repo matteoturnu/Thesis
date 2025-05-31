@@ -1,5 +1,6 @@
 import random
 import difflib
+import json
 
 def generate_numbers_for_product():
     # Define the lower and upper bounds for a 10-digit to 18-digit product
@@ -36,3 +37,12 @@ def get_previous_keys(te_symbols, current_key, include_current=False):
     except ValueError:
         # current_key not found
         return []
+
+def read_from_json(filename):
+    with open(filename, "r", encoding="utf-8") as f:
+        content = json.load(f)
+    return content
+
+def write_to_json(filename, data):
+    with open(filename, "w") as f:
+        json.dump(data, f, indent=2)

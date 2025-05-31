@@ -3,6 +3,9 @@ import re
 import string
 import urllib.parse
 import html
+
+import pyppeteer.errors
+
 from simple_utils import *
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
@@ -311,7 +314,12 @@ def edit_url_query(url, new_query_value, target_parameter=None):
     new_query = urlencode(query_params, doseq=True)
     new_url = urlunparse((parsed_url.scheme, parsed_url.netloc, parsed_url.path, parsed_url.params,
                           new_query, parsed_url.fragment))
+
     return new_url
+
+    # The row below is needed to test with Craft CMS since it doesn't allow encoded urls
+    # but it doesn't work with CVE related to CMS Made Simple with symbols like "#" and so on
+    # return urllib.parse.unquote(new_url)
 
 
 async def exec_payload_in_link(page, link_elem, payload, url):
@@ -351,9 +359,9 @@ async def exec_payload_in_link(page, link_elem, payload, url):
     return html_resp
 
 
-async def exec_payload_in_url(page, attacked_parameter, payload, url):
+async def exec_payload_in_url(page, param_to_attack, payload, url):
     html_resp = ""
-    new_url = edit_url_query(url, payload, attacked_parameter)
+    new_url = edit_url_query(url, payload, param_to_attack)
 
     # setting response listener
     resp_result = asyncio.Future()
@@ -374,56 +382,59 @@ async def exec_payload_in_url(page, attacked_parameter, payload, url):
     return html_resp
 
 
-async def inject_payload(page, url, payload, request_type, attacked_parameter):
-    await page.goto(url)
-    html_resp = ""
+async def inject_payload(page, url, payload, injection_point, param_to_attack):
+    try:
+        await page.goto(url)
+        html_resp = ""
 
-    if request_type == "POST":
-        processed_elements = []
-        button_idx = 0
-        while True:
-            buttons_lst = await page.querySelectorAll("input[type='submit'], button")
-            if button_idx >= len(buttons_lst):
-                break
+        if injection_point == "PAGE":
+            processed_elements = []
+            button_idx = 0
+            while True:
+                buttons_lst = await page.querySelectorAll("input[type='submit'], button")
+                if button_idx >= len(buttons_lst):
+                    break
 
-            button_elem = buttons_lst[button_idx]
-            button_outer_html = await page.evaluate('(el) => el.outerHTML', button_elem)
-            # avoid considering previous scanned buttons again
-            if button_outer_html not in processed_elements:
-                processed_elements.append(button_outer_html)
-                print("Button number ", button_idx)
-                print("Current button: ", button_outer_html)
-                current_html = await exec_payload_in_inputs(page, button_elem, payload, url)
-                html_resp += current_html
+                button_elem = buttons_lst[button_idx]
+                button_outer_html = await page.evaluate('(el) => el.outerHTML', button_elem)
+                # avoid considering previous scanned buttons again
+                if button_outer_html not in processed_elements:
+                    processed_elements.append(button_outer_html)
+                    print("Button number ", button_idx)
+                    print("Current button: ", button_outer_html)
+                    current_html = await exec_payload_in_inputs(page, button_elem, payload, url)
+                    html_resp += current_html
 
-            button_idx += 1
-
-
-        processed_elements = []
-        link_idx = 0
-        while True:
-            links_lst = await page.querySelectorAll("a[href]")
-            if link_idx >= len(links_lst):
-                break
-
-            link_elem = links_lst[link_idx]
-            link_outer_html = await page.evaluate('(el) => el.outerHTML', link_elem)
-            # avoid considering previous scanned links again
-            if link_outer_html not in processed_elements:
-                processed_elements.append(link_outer_html)
-                print("Link number ", link_idx)
-                print("Current link: ", link_outer_html)
-                current_html = await exec_payload_in_link(page, link_elem, payload, url)
-                html_resp += current_html
-
-            link_idx += 1
-
-    elif request_type == "GET":
-        html_resp = await exec_payload_in_url(page, attacked_parameter, payload, url)
+                button_idx += 1
 
 
+            processed_elements = []
+            link_idx = 0
+            while True:
+                links_lst = await page.querySelectorAll("a[href]")
+                if link_idx >= len(links_lst):
+                    break
 
-    return html_resp
+                link_elem = links_lst[link_idx]
+                link_outer_html = await page.evaluate('(el) => el.outerHTML', link_elem)
+                # avoid considering previous scanned links again
+                if link_outer_html not in processed_elements:
+                    processed_elements.append(link_outer_html)
+                    print("Link number ", link_idx)
+                    print("Current link: ", link_outer_html)
+                    current_html = await exec_payload_in_link(page, link_elem, payload, url)
+                    html_resp += current_html
+
+                link_idx += 1
+
+        elif injection_point == "URL":
+            html_resp = await exec_payload_in_url(page, param_to_attack, payload, url)
+
+        return html_resp
+
+    except pyppeteer.errors.NetworkError as e:
+        print("[NetworkError]: ", e)
+
 
 
 def validate_injection(op_res, html_resp, symbols):
