@@ -17,8 +17,24 @@ def load_symbols_by_engine(engine):
             eng_symbols.append(tags)
     return eng_symbols
 
+def filter_engines_by_language(simple_dict, engines, languages):
+    most_likely_engines = dict()
+    if simple_dict:
+        for eng_name, eng_lang in engines.items():
+            for lang in languages:
+                if lang == eng_lang:
+                    most_likely_engines[eng_name] = eng_lang
+    else:
+        for eng, sym_lang in engines.items():
+            for lang in languages:
+                if lang == sym_lang["language"]:
+                    most_likely_engines[eng] = sym_lang
 
-def find_template_engines(success_symbols):
+    return most_likely_engines
+
+
+
+def find_template_engines(success_symbols, lang_names_lst):
     target_engines = {}
     engines_by_symbols = {}
     simple_dict = True
@@ -26,28 +42,14 @@ def find_template_engines(success_symbols):
     # load all the existing engines based on the successful symbols
     # shape: {"<eng_name>": {"symbols": <symbols>, "language": <lang>}, ...}
     for symbols in success_symbols:
-        #include_te = True  <-- part of code in the comments
         for te, lang in te_symbols[symbols].items():
-
-            """
-            for syms, engines in te_symbols.items():
-                # PROBLEM: it should skip the code context version of the same symbols too! 
-                # ex: symbols = syms = "{ }", then skip "}{ " as well
-                if syms == symbols:
-                    continue
-                if te in engines and syms not in success_symbols:
-                    # te is compatible with symbols found to be non-useful for injection
-                    include_te = False
-                    break
-
-            if include_te:
-            """
             if te not in engines_by_symbols:
                 engines_by_symbols[te] = {"symbols": {symbols}, "language": lang}
             else:
                 engines_by_symbols[te]["symbols"].add(symbols)
 
     unique_engines = set(engines_by_symbols.keys())
+    most_likely_engines = dict()
     for eng in unique_engines:
         # check which engines support ALL the successful symbols found
         if len(engines_by_symbols[eng]["symbols"]) == len(success_symbols):
@@ -62,21 +64,53 @@ def find_template_engines(success_symbols):
             if len(engines_by_symbols[eng]["symbols"]) == max_n_symbols:
                 possible_engines[eng] = {"symbols": engines_by_symbols[eng]["symbols"],
                                          "language": engines_by_symbols[eng]["language"]}
+
+        """
+        if lang_names_lst:
+            most_likely_engines = filter_engines_by_language(simple_dict, possible_engines, lang_names_lst)
+        else:
+            most_likely_engines = possible_engines
+         return False, most_likely_engines
+        """
         return simple_dict, possible_engines
 
+    """
+    if lang_names_lst:
+        most_likely_engines = filter_engines_by_language(simple_dict, target_engines, lang_names_lst)
+    else:
+        most_likely_engines = target_engines
+    return True, most_likely_engines
+    """
     return simple_dict, target_engines
 
 
-def check_te_in_response(response, eng_lang_dct):
+def check_te_in_response(response, eng_lang_dct, engines_tested):
+    eng_strings_found = list()
+    lang_strings_found = set()
+    for eng, lang in eng_lang_dct.items():
+        if eng != "Any" and re.search(eng, response, re.IGNORECASE):
+            # engine_found = eng
+            if eng not in engines_tested:
+                eng_strings_found.append(eng)
+        if lang != "Any" and re.search(lang, response, re.IGNORECASE):
+            lang_strings_found.add(lang)
+
+
+    return eng_strings_found, lang_strings_found
+
+"""
+def check_te_in_response(response, eng_lang_dct, engines_tested):
     # TODO: usually problematic with words like "templates" and the supported engine "Plates"
     eng_strings_found = list()
     # engine_found = ""
     for eng, lang in eng_lang_dct.items():
         if eng != "Any" and re.search(eng, response, re.IGNORECASE):
             # engine_found = eng
-            eng_strings_found.append(eng)
+            if eng not in engines_tested:
+                eng_strings_found.append(eng)
 
     return eng_strings_found
+"""
 
 
 def find_exception_in_response(response):

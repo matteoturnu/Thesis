@@ -2,6 +2,9 @@
   " ": {
     "Any": "Any"
   },
+  "string:{ }": {
+    "Smarty": "PHP"
+  },
   "$ ": {
     "Cheetah": "Python",
     "Genshi and Kid": "Python",
@@ -224,8 +227,5 @@
   },
   "#set $num= #$num": {
     "Spitfire": "Python"
-  },
-  "string:{ }": {
-    "Smarty": "PHP"
   }
 }

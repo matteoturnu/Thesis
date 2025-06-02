@@ -73,6 +73,7 @@ async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, 
 
 async def test_symbols(scanned_symbols, sanitized_payloads_by_symbols, engines_dct, success_symbols_lst,
                        success_payloads_lst, symbols, page, url, injection_point, param_to_attack, find_te=True):
+
     scanned_symbols.append(symbols)
     response, sanitized_payloads = await ssti_attack(success_symbols_lst, success_payloads_lst,
                                                      symbols, page, url, injection_point, param_to_attack)
@@ -94,7 +95,7 @@ def add_template_engine(new_engine, new_language, te_symbols_dct):
     print("Include a space where the string should be inserted. Ex: '{ }' for symbols '{}'")
     i = 0
     while user_input != "0":
-        user_input = input(f"Symbols ({i + 1}): ")
+        user_input = input(f"Symbols ({i+1}): ")
         if user_input != 0 and " " in user_input:
             supported_symbols.append(user_input)
             i += 1
@@ -114,6 +115,7 @@ def add_template_engine(new_engine, new_language, te_symbols_dct):
         print(f"Engine '{new_engine}' ({new_language}) added!")
 
 
+
 async def main(url, injection_point, param_to_attack):
     # launch browser without GUI
     browser = await launch({"headless": True})
@@ -126,66 +128,85 @@ async def main(url, injection_point, param_to_attack):
     te_symbols = read_from_json("te_symbols.json")
     engines_dct = load_engines(te_symbols)
 
-    symbols_to_test = te_symbols
-
     success_symbols_lst = []
     old_success_syms_lst = []
-    scanned_symbols = set()
+    scanned_symbols = []
     success_payloads_lst = []
     sanitized_payloads_by_symbols = dict()
-    engines_tested = []
-    # break_from_symbols_for = False
-
-    lang_names_lst = set()
-    for symbols in symbols_to_test:
+    engines_keywords = []
+    break_from_symbols_for = False
+    for symbols in te_symbols:
         # for symbols in ["string:{ }", "{ }"]:
-        if symbols in scanned_symbols:
-            continue
-
-        # if symbols == "{{ }}":
-            # print("Hi")
-
-        scanned_symbols.add(symbols)
+        """
+        scanned_symbols.append(symbols)
         response, sanitized_payloads = await ssti_attack(success_symbols_lst, success_payloads_lst,
                                                          symbols, page, url, injection_point, param_to_attack)
 
         if sanitized_payloads:
             sanitized_payloads_by_symbols[symbols] = sanitized_payloads
 
-        # eng_names_lst = check_te_in_response(response, engines_dct, engines_tested)
-        # not so reliable: used in the end to see if we can reduce the template engines found
-        eng_names_lst, lang_names_lst = check_te_in_response(response, engines_dct, engines_tested)
-        # if lang_names_lst:
-            # print(f"\nLanguage(s) found in the response! Language(s): {lang_names_lst}")
+        eng_names_lst = check_te_in_response(response, engines_dct)
+        """
+        eng_names_lst = await test_symbols(scanned_symbols, sanitized_payloads_by_symbols, engines_dct,
+                                           success_symbols_lst, success_payloads_lst, symbols, page, url,
+                                           injection_point, param_to_attack)
 
         # eng_names_lst = []  # uncomment to disable TE recognition in response
         if eng_names_lst:
             print(f"\nTemplate engine name(s) found in the response! Engine(s): {eng_names_lst}")
+            # scanned_symbols = get_previous_keys(te_symbols, symbols, include_current=True)
 
-
-            old_success_syms_lst = success_symbols_lst[:]
+            old_success_syms_lst = success_symbols_lst
 
             for eng_name in eng_names_lst:
-                engines_tested.append(eng_name)
+                engines_keywords.append(eng_name)
                 eng_symbols = load_symbols_by_engine(eng_name)
                 for tags in eng_symbols:
                     if tags not in scanned_symbols:
-                        scanned_symbols.add(tags)
+                        """
+                        scanned_symbols.append(tags)
                         response, new_sanit_payloads = await ssti_attack(success_symbols_lst, success_payloads_lst,
                                                                          tags, page, url, injection_point,
                                                                          param_to_attack)
                         if new_sanit_payloads:
                             sanitized_payloads_by_symbols[tags] = new_sanit_payloads
+                        """
+                        await test_symbols(scanned_symbols, sanitized_payloads_by_symbols, engines_dct,
+                                           success_symbols_lst, success_payloads_lst, tags, page, url,
+                                           injection_point, param_to_attack, find_te=False)
 
-        if eng_names_lst and len(old_success_syms_lst) == len(success_symbols_lst):
-            print("No new successful symbols after finding engine name keyword. Continuing with remaining symbols...")
-            # remaining_symbols_to_scan = [sym for sym in te_symbols if sym not in scanned_symbols]
+            break_from_symbols_for = True
 
-        # break_from_symbols_for = True
 
-    """if break_from_symbols_for:
-        break
-    """
+        if break_from_symbols_for:
+            break
+
+    if len(old_success_syms_lst) == len(success_symbols_lst):
+        print("No new successful symbols after finding engine name keyword. Continuing with remaining symbols...")
+        remaining_symbols_to_scan = [sym for sym in te_symbols if sym not in scanned_symbols]
+        for symbols in remaining_symbols_to_scan:
+            """
+            scanned_symbols.append(symbols)
+            response, sanitized_payloads = await ssti_attack(success_symbols_lst, success_payloads_lst,
+                                                             symbols, page, url, injection_point, param_to_attack)
+
+            if sanitized_payloads:
+                sanitized_payloads_by_symbols[symbols] = sanitized_payloads
+            """
+            eng_names_lst = await test_symbols(scanned_symbols, sanitized_payloads_by_symbols, engines_dct,
+                                               success_symbols_lst, success_payloads_lst, symbols, page, url,
+                                               injection_point, param_to_attack)
+            if eng_names_lst and :
+                print(f"\nTemplate engine name(s) found in the response! Engine(s): {eng_names_lst}")
+                # scanned_symbols = get_previous_keys(te_symbols, symbols, include_current=True)
+
+                old_success_syms_lst = success_symbols_lst
+
+                for eng_name in eng_names_lst:
+                    engines_keywords.append(eng_name)
+                    eng_symbols = load_symbols_by_engine(eng_name)
+                    for tags in eng_symbols:
+                        if tags not in scanned_symbols:
 
 
     await browser.close()
@@ -196,8 +217,7 @@ async def main(url, injection_point, param_to_attack):
     if success_payloads_lst:
         print("\nSome successful payloads have been found:\n", success_payloads_lst)
         print(f"Target template engine(s): ")
-        # simple_dict, te_dct = find_template_engines(success_symbols_lst)
-        simple_dict, te_dct = find_template_engines(success_symbols_lst, lang_names_lst)
+        simple_dict, te_dct = find_template_engines(success_symbols_lst)
         show_engines(simple_dict, te_dct)
     else:
         print("No successful payload has been found.")
@@ -205,6 +225,7 @@ async def main(url, injection_point, param_to_attack):
     if sanitized_payloads_by_symbols:
         print("Some payloads seem to have been sanitized:")
         print(sanitized_payloads_by_symbols)
+
 
 if __name__ == "__main__":
 
@@ -297,6 +318,7 @@ if __name__ == "__main__":
             sys.exit(4)
 
         add_template_engine(new_eng, new_lang, te_symbols)
+
 
     ######################
 
