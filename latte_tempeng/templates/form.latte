@@ -1,35 +1,45 @@
 <html>
   <head><title>Simple Latte Server</title></head>
   <body>
-    <h1>Enter your name!</h1>
+    <!--<h1>Enter your name!</h1>-->
+    <h1> Latte Server </h1>
     <form method="post" action="/latte.php">
         <input type="text" name="name" placeholder="Your Name"> <br><br>
-        <input type="text" name="surname" placeholder="Your Surname"> <br><br>
+        <!--<input type="text" name="surname" placeholder="Your Surname"> <br><br>-->
 
-        <input type="radio" id="html" name="fav_language" value="HTML">
-        <label for="html">HTML</label><br>
-        <input type="radio" id="css" name="fav_language" value="CSS">
-        <label for="css">CSS</label><br>
+        <table cellspacing="10">
+            <tr>
+                <td>
+                    <label for="sex"></label>
+                    <select name="sex" id="sex" multiple>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                    </select>
+                </td>
+                <td>
+                    <input type="radio" id="html" name="fav_language" value="HTML">
+                    <label for="html">HTML</label><br>
+                    <input type="radio" id="css" name="fav_language" value="CSS">
+                    <label for="css">CSS</label><br><br>
+                </td>
+                <td>
+                    <input type="checkbox" id="vehicle1" name="vehicle1" value="Bike">
+                    <label for="vehicle1"> I have a bike</label><br>
+                    <input type="checkbox" id="vehicle2" name="vehicle2" value="Car">
+                    <label for="vehicle2"> I have a car</label><br>
+                    <input type="checkbox" id="vehicle3" name="vehicle3" value="Boat">
+                    <label for="vehicle3"> I have a boat</label>
+                </td>
+            </tr>
 
-        <input type="checkbox" id="vehicle1" name="vehicle1" value="Bike">
-        <label for="vehicle1"> I have a bike</label><br>
-        <input type="checkbox" id="vehicle2" name="vehicle2" value="Car">
-        <label for="vehicle2"> I have a car</label><br>
-        <input type="checkbox" id="vehicle3" name="vehicle3" value="Boat">
-        <label for="vehicle3"> I have a boat</label>
-        <br>
-        <input type="password" name="password" placeholder="Your password"> <br><br>
+        </table>
+        <input type="password" name="password" placeholder="Your password">
         <!--<input type="email" name="email" placeholder="Your e-mail"> <br><br>-->
         <input type="text" name="email" placeholder="Your e-mail"> <br><br>
-        <input type="search" name="search" placeholder="Your search"> <br><br>
+        <input type="search" name="search" placeholder="Your search">
         <input type="tel" name="phone_number" placeholder="Your phone number"> <br><br>
-        <textarea id="w3review" name="w3review" rows="4" cols="50"></textarea>
-        <br>
-        <label for="sex"></label>
-        <select name="sex" id="sex" multiple>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-        </select>
+        <textarea id="w3review" name="w3review" rows="4" cols="50" placeholder="Write something"></textarea>
+        <br><br>
         <input type="submit" name="identity_form" id="send1" value="Send">
     </form>
 

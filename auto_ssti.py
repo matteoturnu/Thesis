@@ -71,20 +71,6 @@ async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, 
     return response, modified_payloads
 
 
-async def test_symbols(scanned_symbols, sanitized_payloads_by_symbols, engines_dct, success_symbols_lst,
-                       success_payloads_lst, symbols, page, url, injection_point, param_to_attack, find_te=True):
-    scanned_symbols.append(symbols)
-    response, sanitized_payloads = await ssti_attack(success_symbols_lst, success_payloads_lst,
-                                                     symbols, page, url, injection_point, param_to_attack)
-
-    if sanitized_payloads:
-        sanitized_payloads_by_symbols[symbols] = sanitized_payloads
-
-    if find_te:
-        print("Looking for engine name keyword")
-        return check_te_in_response(response, engines_dct)
-    return []
-
 
 def add_template_engine(new_engine, new_language, te_symbols_dct):
     supported_symbols = []
@@ -180,12 +166,11 @@ async def main(url, injection_point, param_to_attack):
         if eng_names_lst and len(old_success_syms_lst) == len(success_symbols_lst):
             print("No new successful symbols after finding engine name keyword. Continuing with remaining symbols...")
             # remaining_symbols_to_scan = [sym for sym in te_symbols if sym not in scanned_symbols]
+        else:
+            # MAYBE BREAK ONLY WHEN 80/90% OF SUCCESSFUL PAYLOADS ASSOCIATED TO A CERTAIN ENGINE, WHOSE NAME HAS BEEN FOUND
+            # IN THE RESPONSE PAGE, ARE FOUND. OTHERWISE, GO BACK TO SCAN THE SYMBOLS OF ANY TEMPLATE ENGINE.
+            break
 
-        # break_from_symbols_for = True
-
-    """if break_from_symbols_for:
-        break
-    """
 
 
     await browser.close()

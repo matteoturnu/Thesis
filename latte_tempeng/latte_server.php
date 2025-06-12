@@ -24,8 +24,6 @@
 
             $plaintext_context_template = "<h1>User Profile</h1>
                                 <p>Hello,  $name </p>
-                                <p>Your other data: </p>
-                                <p>Surname: $surname </p>
                                 <p>Sex: $sex </p>
                                 <p>Your fav language: $fav_lang </p>
                                 <p>Your vehicles: $vehicle1, $vehicle2 , $vehicle3 </p>
@@ -41,8 +39,6 @@
 
             $code_context_template = "<h1>User Profile</h1>
                                 <p>Hello, {= $name } </p>
-                                <p>Your other data: </p>
-                                <p>Surname: {= $surname }</p>
                                 <p>Sex: {= $sex }</p>
                                 <p>Your fav language: {= $fav_lang }</p>
                                 <p>Your vehicles: {= $vehicle1 }, {= $vehicle2 }, {= $vehicle3 }</p>
@@ -104,7 +100,7 @@
             $link_code_template = "<h1>Value of query parameter in the first link </h1>
                                 <p>Link1 query1: {= $title }</p>
                                 <p>Link1 query 2: {= $message }</p>";
-            file_put_contents("templates/link_template.latte", $link_code_template);
+            file_put_contents("templates/link_template.latte", $link_plain_template);
             # file_put_contents("templates/link_template.latte", $link_code_template);
             $latte->render("templates/link_template.latte");
         }
@@ -120,7 +116,7 @@
             $link_code_template = "<h1>Value of query parameter in the second link </h1>
                                 <p>Link2 query1: {= $greeting }</p>
                                 <p>Link2 query2: {= $clap }</p>";
-            file_put_contents("templates/link_template.latte", $link_code_template);
+            file_put_contents("templates/link_template.latte", $link_plain_template);
             # file_put_contents("templates/link_template.latte", $link_code_template);
             $latte->render("templates/link_template.latte");
         }
@@ -137,7 +133,7 @@
             $fullnav_btn_code_template = "<h1>Button JS fullnav clicked! </h1>
                                 <p>JSbtn query1: {= $query1 }</p>
                                 <p>JSbtn query2: {= $query2 }</p>";
-            file_put_contents("templates/navbutton_template.latte", $fullnav_btn_code_template);
+            file_put_contents("templates/navbutton_template.latte", $fullnav_btn_plain_template);
             # file_put_contents("templates/navbutton_template.latte", $fullnav_btn_code_template);
             $latte->render("templates/navbutton_template.latte");
         }

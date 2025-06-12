@@ -40,25 +40,13 @@
     "Razor": ".NET"
   },
   "{ }": {
-    "Latte": "PHP",
     "Dust": "JavaScript",
     "Razor": ".NET",
-    "Smarty": "PHP"
-  },
-  "1}{ ": {
+    "Smarty": "PHP",
     "Latte": "PHP"
   },
   "{@ }": {
-    "Latte": "PHP",
-    "Dust": "JavaScript"
-  },
-  "1}{@ ": {
-    "Latte": "PHP"
-  },
-  "{= }": {
-    "Latte": "PHP"
-  },
-  "1}{= ": {
+    "Dust": "JavaScript",
     "Latte": "PHP"
   },
   "{function=\"print( )\"}": {
@@ -80,8 +68,8 @@
     "FreeMarker": "Java",
     "Marko": "JavaScript",
     "Plates": "PHP",
-    "Latte": "PHP",
-    "Kajiki": "Python"
+    "Kajiki": "Python",
+    "Latte": "PHP"
   },
   "}${ ": {
     "Chameleon": "Python",
@@ -227,5 +215,18 @@
   },
   "#set $num= #$num": {
     "Spitfire": "Python"
+  },
+
+  "{= }": {
+    "Latte": "PHP"
+  },
+  "1}{ ": {
+    "Latte": "PHP"
+  },
+  "1}{@ ": {
+    "Latte": "PHP"
+  },
+  "1}{= ": {
+    "Latte": "PHP"
   }
 }
