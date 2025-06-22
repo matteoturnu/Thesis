@@ -92,7 +92,7 @@ async def compute_request(page, payload, handler_obj, resp_handler, resp_future,
         page.once("response", resp_handler)
         # new url obtained
         new_url = edit_url_query(req_url, payload)
-        print("New link for injection: ", new_url)
+        print("New url for injection: ", new_url)
         await handler_obj["request_obj"].continue_({"url": new_url})
         await page.setRequestInterception(False)
         # resp_future may need to be returned! (global)
@@ -400,8 +400,7 @@ async def inject_payload(page, url, payload, injection_point, param_to_attack):
                 # avoid considering previous scanned buttons again
                 if button_outer_html not in processed_elements:
                     processed_elements.append(button_outer_html)
-                    print("Button number ", button_idx)
-                    print("Current button: ", button_outer_html)
+                    print(f"Button {button_idx+1}: {button_outer_html}")
                     current_html = await exec_payload_in_inputs(page, button_elem, payload, url)
                     html_resp += current_html
 
@@ -420,8 +419,7 @@ async def inject_payload(page, url, payload, injection_point, param_to_attack):
                 # avoid considering previous scanned links again
                 if link_outer_html not in processed_elements:
                     processed_elements.append(link_outer_html)
-                    print("Link number ", link_idx)
-                    print("Current link: ", link_outer_html)
+                    print(f"Link {link_idx}: {link_outer_html}")
                     current_html = await exec_payload_in_link(page, link_elem, payload, url)
                     html_resp += current_html
 

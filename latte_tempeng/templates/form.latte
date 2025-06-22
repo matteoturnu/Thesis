@@ -17,9 +17,9 @@
                     </select>
                 </td>
                 <td>
-                    <input type="radio" id="html" name="fav_language" value="HTML">
+                    <input type="radio" id="html" name="fav_language" value="html">
                     <label for="html">HTML</label><br>
-                    <input type="radio" id="css" name="fav_language" value="CSS">
+                    <input type="radio" id="css" name="fav_language" value="css">
                     <label for="css">CSS</label><br><br>
                 </td>
                 <td>
@@ -34,8 +34,8 @@
 
         </table>
         <input type="password" name="password" placeholder="Your password">
-        <!--<input type="email" name="email" placeholder="Your e-mail"> <br><br>-->
-        <input type="text" name="email" placeholder="Your e-mail"> <br><br>
+        <input type="email" name="email" placeholder="Your e-mail"> <br><br>
+        <!--<input type="text" name="email" placeholder="Your e-mail"> <br><br>-->
         <input type="search" name="search" placeholder="Your search">
         <input type="tel" name="phone_number" placeholder="Your phone number"> <br><br>
         <textarea id="w3review" name="w3review" rows="4" cols="50" placeholder="Write something"></textarea>
@@ -43,12 +43,13 @@
         <input type="submit" name="identity_form" id="send1" value="Send">
     </form>
 
+    <!--
     <form method="post" action="/latte.php">
         <input type="text" name="username" placeholder="Your username"> <br><br>
-        <input type="email" name="email" placeholder="Your e-mail"> <br><br>
+        <input type="text" name="nickname" placeholder="Your nickname"> <br><br>
 
         <input type="submit" name="credentials_form" id="send2" value="Send">
-    </form>
+    </form> -->
 
     <!--<button type="button" id="useless">Useless button</button>-->
     <button onclick="window.location.href='/?query1=try&query2=me'" id="fullnav">JS full nav button</button>
@@ -67,7 +68,7 @@
           xhttp.send();
         }
     </script>
-    <button type="button" onclick="loadDoc()" id="ajax_btn">Change Content</button>
+    <!--<button type="button" onclick="loadDoc()" id="ajax_btn">Change Content</button>-->
 
     <p id="dynamic_par"></p>
     <a href="latte.php?title=ciao&message=hello_world" id="1">Try me</a>

@@ -6,7 +6,7 @@
         ///if ($_POST["identity_form"]) {
         if (isset($_POST["identity_form"])) {
             $name = $_POST["name"];
-            $surname = $_POST["surname"];
+            //$surname = $_POST["surname"];
 
             $fav_lang = $_POST["fav_language"];
             $vehicle1 = $_POST["vehicle1"];
@@ -23,7 +23,7 @@
             $search = htmlspecialchars($search);
 
             $plaintext_context_template = "<h1>User Profile</h1>
-                                <p>Hello,  $name </p>
+                                <p>Hello, $name </p>
                                 <p>Sex: $sex </p>
                                 <p>Your fav language: $fav_lang </p>
                                 <p>Your vehicles: $vehicle1, $vehicle2 , $vehicle3 </p>
@@ -36,14 +36,14 @@
                                 <p>Hello, $name </p>
                                 <p>Your other data: </p>
                                 <p>Surname: $surname </p>";*/
-
-            $code_context_template = "<h1>User Profile</h1>
+            $code_context_template = "
+                                <h1>User Profile</h1>
                                 <p>Hello, {= $name } </p>
                                 <p>Sex: {= $sex }</p>
-                                <p>Your fav language: {= $fav_lang }</p>
+                                <p>Your fav language: {= (string) $fav_lang }</p>
                                 <p>Your vehicles: {= $vehicle1 }, {= $vehicle2 }, {= $vehicle3 }</p>
                                 <p>Password: {= $password }</p>
-                                <p>E-mail: {= $email }</p>
+                                <p>E-mail: {= '$email' }</p>
                                 <p>Search: {= $search }</p>
                                 <p>Phone number: {= $tel }</p>
                                 <p>Textarea: {= $textarea }</p>";
@@ -55,14 +55,14 @@
         }
         else if (isset($_POST["credentials_form"])) {
             $user = $_POST["username"];
-            $email = $_POST["email"];
+            $nickname = $_POST["nickname"];
 
             $plaintext_context_template = "<h1>User Profile</h1>
                                 <p>Hello, $user </p>
-                                <p>Your email is: $email </p>";
+                                <p>Your nickname is: $nickname </p>";
             $code_context_template = "<h1>User Profile</h1>
                                 <p>Hello, {= $user }</p>
-                                <p>Your email is: {= $email } </p>";
+                                <p>Your nickname is: {= $nickname } </p>";
         }
         //$name = $_POST["name"];
 
@@ -76,8 +76,8 @@
         $template->setSource($new_template);  // Set the string as the template source
         echo $template->renderToString();*/
 
-        file_put_contents("templates/template.latte", $code_context_template);
-        # file_put_contents("templates/template.latte", $code_context_template);
+        file_put_contents("templates/template.latte", $plaintext_context_template);
+        //file_put_contents("templates/template.latte", $code_context_template);
         #$params = ['user' => $name];
         $params = [];
 
@@ -101,7 +101,7 @@
                                 <p>Link1 query1: {= $title }</p>
                                 <p>Link1 query 2: {= $message }</p>";
             file_put_contents("templates/link_template.latte", $link_plain_template);
-            # file_put_contents("templates/link_template.latte", $link_code_template);
+            //file_put_contents("templates/link_template.latte", $link_code_template);
             $latte->render("templates/link_template.latte");
         }
         else if (isset($_GET["greeting"])) {
@@ -117,7 +117,7 @@
                                 <p>Link2 query1: {= $greeting }</p>
                                 <p>Link2 query2: {= $clap }</p>";
             file_put_contents("templates/link_template.latte", $link_plain_template);
-            # file_put_contents("templates/link_template.latte", $link_code_template);
+            //file_put_contents("templates/link_template.latte", $link_code_template);
             $latte->render("templates/link_template.latte");
         }
         else if (isset($_GET["query1"])) {
@@ -134,7 +134,7 @@
                                 <p>JSbtn query1: {= $query1 }</p>
                                 <p>JSbtn query2: {= $query2 }</p>";
             file_put_contents("templates/navbutton_template.latte", $fullnav_btn_plain_template);
-            # file_put_contents("templates/navbutton_template.latte", $fullnav_btn_code_template);
+            //file_put_contents("templates/navbutton_template.latte", $fullnav_btn_code_template);
             $latte->render("templates/navbutton_template.latte");
         }
         else

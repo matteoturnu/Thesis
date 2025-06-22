@@ -4,6 +4,8 @@ import json
 
 def generate_numbers_for_product():
     # Define the lower and upper bounds for a 10-digit to 18-digit product
+    # CAREFUL: it's generating two numbers where one has 5-10 digits, not 4-9!
+    # then, it ensure the number of digits is less than 18, because after 18 digits PHP use scientific notation
     lower_bound = 10 ** 9  # 10 digits
     upper_bound = 10 ** 18  # 18 digits
     # Find two random numbers whose product is within the desired range

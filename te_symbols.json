@@ -2,9 +2,6 @@
   " ": {
     "Any": "Any"
   },
-  "string:{ }": {
-    "Smarty": "PHP"
-  },
   "$ ": {
     "Cheetah": "Python",
     "Genshi and Kid": "Python",
@@ -56,9 +53,6 @@
     "RainTPL": "PHP"
   },
   "{# #}": {
-    "RainTPL": "PHP"
-  },
-  "a}{# #": {
     "RainTPL": "PHP"
   },
   "${ }": {
@@ -228,5 +222,8 @@
   },
   "1}{= ": {
     "Latte": "PHP"
+  },
+  "string:{ }": {
+    "Smarty": "PHP"
   }
 }

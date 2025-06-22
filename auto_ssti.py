@@ -12,7 +12,7 @@ async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, 
     modified_payloads = []
 
     payload, operation = create_payload(symbols)
-    print(f"\nTrying symbols '{symbols}' with payload '{payload}'...")
+    print(f"\n\nTrying symbols '{symbols}' with payload '{payload}'...")
 
     response = await inject_payload(page, url, payload, injection_point, param_to_attack)
     # print(response)
@@ -33,12 +33,13 @@ async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, 
         else:
             store_symbols(success_symbols_lst, success_payloads_lst, symbols, payload)
 
-        print("Successful injection!")
+        print("SUCCESSFUL INJECTION!")
         for match in resp_matches:
             print(match)
         print("Stored payload: ", success_payloads_lst)
     else:
-        print("Failed injection.")
+        print("FAILED INJECTION.")
+        print("\nLooking for exceptions or sanitized payloads...")
         # print("Response: ", response)
         # process to find if sanitization occurred
         # now inject legitimate data
@@ -47,26 +48,30 @@ async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, 
             query_params = parse_qs(urlparse(url).query)
             default_input = query_params.get(param_to_attack, [None])[0]
         elif injection_point == "PAGE":
-            default_input = "abcdefghijklmno"
+            default_input = "legitimate_input"
 
         legit_response = await inject_payload(page, url, default_input, injection_point, param_to_attack)
         # build the expected html response when payload is used
 
         exception_in_legit = find_exception_in_response(legit_response)
         if exception_in_legit:
-            print("EXCEPTION in LEGIT response.", legit_response)
+            print("EXCEPTION in LEGIT response.\n", legit_response)
             # print("Response after payload injection: ", response)
             return response, []
 
         expected_response = legit_response.replace(default_input, payload)
         exception = check_if_exception(response, expected_response, symbols)
         if exception:
-            print("EXCEPTION FOUND.")
+            print("EXCEPTION after INJECTION.\n", response)
             # print("Response after payload injection: ", response)
             return response, []
 
         modified_payloads = get_sanitized_payloads(response, expected_response, symbols, operation)
         modified_payloads = [mod for mod in modified_payloads]
+        if modified_payloads:
+            print("SANITIZED payloads found!", modified_payloads)
+        else:
+            print("No exception or sanitization occurred.")
 
     return response, modified_payloads
 
@@ -147,7 +152,7 @@ async def main(url, injection_point, param_to_attack):
         # eng_names_lst = []  # uncomment to disable TE recognition in response
         if eng_names_lst:
             print(f"\nTemplate engine name(s) found in the response! Engine(s): {eng_names_lst}")
-
+            print(response)
 
             old_success_syms_lst = success_symbols_lst[:]
 
@@ -166,7 +171,7 @@ async def main(url, injection_point, param_to_attack):
         if eng_names_lst and len(old_success_syms_lst) == len(success_symbols_lst):
             print("No new successful symbols after finding engine name keyword. Continuing with remaining symbols...")
             # remaining_symbols_to_scan = [sym for sym in te_symbols if sym not in scanned_symbols]
-        else:
+        elif eng_names_lst:
             # MAYBE BREAK ONLY WHEN 80/90% OF SUCCESSFUL PAYLOADS ASSOCIATED TO A CERTAIN ENGINE, WHOSE NAME HAS BEEN FOUND
             # IN THE RESPONSE PAGE, ARE FOUND. OTHERWISE, GO BACK TO SCAN THE SYMBOLS OF ANY TEMPLATE ENGINE.
             break
@@ -247,7 +252,7 @@ if __name__ == "__main__":
         if param_to_attack is not None:
             print(f"Url parameter to test: {param_to_attack}")
 
-        asyncio.run(main(url, injection_point, param_to_attack), debug=True)
+        asyncio.run(main(url, injection_point, param_to_attack), debug=False)
 
     # --add-engine
     if sys.argv[1] == supported_args[2]:

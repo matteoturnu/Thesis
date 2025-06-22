@@ -11,21 +11,46 @@
     $t = new Tpl;
 
     if ($_POST) {
-        if (isset($_POST["identity_form"])) {
+       if (isset($_POST["identity_form"])) {
             $name = $_POST["name"];
-            //escape name (htmlspecialchars() not working...)
-            # $name = htmlspecialchars($name, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-            $name = htmlentities($name);
-            $surname = $_POST["surname"];
+            //$surname = $_POST["surname"];
 
+            $fav_lang = $_POST["fav_language"];
+            $vehicle1 = $_POST["vehicle1"];
+            $vehicle2 = $_POST["vehicle2"];
+            $vehicle3 = $_POST["vehicle3"];
+            $password = $_POST["password"];
+            $email = $_POST["email"];
+            $search = $_POST["search"];
+            $tel = $_POST["phone_number"];
+            $textarea = $_POST["w3review"];
+            $sex = $_POST["sex"];
+
+            // escaping search
+            $search = htmlspecialchars($search);
             $plain_context_template = "<h1>User Profile</h1>
-                            <p>Hello, $name </p>
-                            <p>Your surname is: $surname</p>";
+                                <p>Hello,  $name </p>
+                                <p>Sex: $sex </p>
+                                <p>Your fav language: $fav_lang </p>
+                                <p>Your vehicles: $vehicle1, $vehicle2 , $vehicle3 </p>
+                                <p>Password: $password </p>
+                                <p>E-mail: $email </p>
+                                <p>Search: $search </p>
+                                <p>Phone number: $tel </p>
+                                <p>Textarea: $textarea </p>";
             $code_context_template = "<h1>User Profile</h1>
-                            <p>Hello, {$name} </p>
-                            <p>Your surname is: {$surname} </p>";
+                                <p>Hello, {$name}</p>
+                                <p>Sex: {$sex}</p>
+                                <p>Your fav language: {$fav_lang}</p>
+                                <p>Your vehicles: {$vehicle1}, {$vehicle2}, {$vehicle3}</p>
+                                <p>Password: {$password}</p>
+                                <p>E-mail: {$email}</p>
+                                <p>Search: {$search}</p>
+                                <p>Phone number: {$tel}</p>
+                                <p>Textarea: {$textarea}</p>";
 
         }
+
         else if (isset($_POST["credentials_form"])) {
             $user = $_POST["username"];
             $email = $_POST["email"];
@@ -33,23 +58,90 @@
             $plain_context_template = "<h1>User Profile</h1>
                             <p>Hello, $user </p>
                             <p>Your email is: $email </p>";
+            $code_context_template = "<h1>User Profile</h1>
+                            <p>Hello, {$user}</p>
+                            <p>Your email is: {$email}</p>";
+            /*
+            $user = $_POST["username"];
+            $email = $_POST["email"];
+
+            $plain_context_template = "<h1>User Profile</h1>
+                            <p>Hello, $user </p>
+                            <p>Your email is: $email </p>";
+            */
+            // INNER COMMENT START
             /*$code_context_template = "<h1>User Profile</h1>
                             <p>Hello, { $user } </p>
                             <p>Your email is: { $email } </p>";*/
+            // INNER COMMENT END
+            /*
             $code_context_template = "<h1>User Profile</h1>";
             $code_context_template .= '<p>Hello, {$' . $user . '} </p>';
-            $code_context_template .= '<p>Your email is: {$' . $email . '} </p>';
+            $code_context_template .= '<p>Your email is: {$' . $email . '} </p>';*/
         }
 
         # create a file with the template
         //echo "Template start: $code_context_template";
         //echo "Template end";
-        file_put_contents("templates/template.html", $plain_context_template);
+        //file_put_contents("templates/template.html", $plain_context_template);
+        file_put_contents("templates/template.html", $code_context_template);
         echo $t->draw('template');
 
     }
     else {
-        echo $t->draw('form');
+        if (isset($_GET["title"])) {
+            //Link 1
+            $title = $_GET["title"];
+            $message = "";
+            if (isset($_GET["message"]))
+                $message = $_GET["message"];
+
+            $link_plain_template = "<h1>Value of query parameter in the first link </h1>
+                                <p>Link1 query1: $title</p>
+                                <p>Link1 query 2: $message</p>";
+            $link_code_template = "<h1>Value of query parameter in the first link </h1>
+                                <p>Link1 query1: {$title}</p>
+                                <p>Link1 query 2: {$message}</p>";
+            //file_put_contents("templates/link_template.html", $link_plain_template);
+            file_put_contents("templates/link_template.html", $link_code_template);
+            echo $t->draw('link_template');
+        }
+        else if (isset($_GET["greeting"])) {
+            // Link 2
+            $greeting = $_GET["greeting"];
+            $clap = "";
+            if (isset($_GET["clap"]))
+                $clap = $_GET["clap"];
+            $link_plain_template = "<h1>Value of query parameter in the second link </h1>
+                                <p>Link2 query1: $greeting</p>
+                                <p>Link2 query2: $clap</p>";
+            $link_code_template = "<h1>Value of query parameter in the second link </h1>
+                                <p>Link2 query1: {$greeting}</p>
+                                <p>Link2 query2: {$clap}</p>";
+            //file_put_contents("templates/link_template.html", $link_plain_template);
+            file_put_contents("templates/link_template.html", $link_code_template);
+            echo $t->draw("link_template");
+        }
+        else if (isset($_GET["query1"])) {
+            //button JS id=fullnav
+            $query1 = $_GET["query1"];
+            $query2 = "";
+            if (isset($_GET["query2"]))
+                $query2 = $_GET["query2"];
+
+            $fullnav_btn_plain_template = "<h1>Button JS fullnav clicked! </h1>
+                                <p>JSbtn query1: $query1</p>
+                                <p>JSbtn query2: $query2</p>";
+            $fullnav_btn_code_template = "<h1>Button JS fullnav clicked! </h1>
+                                <p>JSbtn query1: {$query1}</p>
+                                <p>JSbtn query2: {$query2}</p>";
+            //file_put_contents("templates/navbutton_template.html", $fullnav_btn_plain_template);
+            file_put_contents("templates/navbutton_template.html", $fullnav_btn_code_template);
+            echo $t->draw("navbutton_template");
+        }
+        else {
+            echo $t->draw('form');
+        }
     }
 
     /*
