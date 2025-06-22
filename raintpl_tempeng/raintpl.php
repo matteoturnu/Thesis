@@ -83,8 +83,8 @@
         # create a file with the template
         //echo "Template start: $code_context_template";
         //echo "Template end";
-        //file_put_contents("templates/template.html", $plain_context_template);
-        file_put_contents("templates/template.html", $code_context_template);
+        file_put_contents("templates/template.html", $plain_context_template);
+        //file_put_contents("templates/template.html", $code_context_template);
         echo $t->draw('template');
 
     }
@@ -102,8 +102,8 @@
             $link_code_template = "<h1>Value of query parameter in the first link </h1>
                                 <p>Link1 query1: {$title}</p>
                                 <p>Link1 query 2: {$message}</p>";
-            //file_put_contents("templates/link_template.html", $link_plain_template);
-            file_put_contents("templates/link_template.html", $link_code_template);
+            file_put_contents("templates/link_template.html", $link_plain_template);
+            //file_put_contents("templates/link_template.html", $link_code_template);
             echo $t->draw('link_template');
         }
         else if (isset($_GET["greeting"])) {
@@ -118,8 +118,8 @@
             $link_code_template = "<h1>Value of query parameter in the second link </h1>
                                 <p>Link2 query1: {$greeting}</p>
                                 <p>Link2 query2: {$clap}</p>";
-            //file_put_contents("templates/link_template.html", $link_plain_template);
-            file_put_contents("templates/link_template.html", $link_code_template);
+            file_put_contents("templates/link_template.html", $link_plain_template);
+            //file_put_contents("templates/link_template.html", $link_code_template);
             echo $t->draw("link_template");
         }
         else if (isset($_GET["query1"])) {
@@ -135,8 +135,8 @@
             $fullnav_btn_code_template = "<h1>Button JS fullnav clicked! </h1>
                                 <p>JSbtn query1: {$query1}</p>
                                 <p>JSbtn query2: {$query2}</p>";
-            //file_put_contents("templates/navbutton_template.html", $fullnav_btn_plain_template);
-            file_put_contents("templates/navbutton_template.html", $fullnav_btn_code_template);
+            file_put_contents("templates/navbutton_template.html", $fullnav_btn_plain_template);
+            //file_put_contents("templates/navbutton_template.html", $fullnav_btn_code_template);
             echo $t->draw("navbutton_template");
         }
         else {

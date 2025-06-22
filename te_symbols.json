@@ -55,9 +55,7 @@
   "{# #}": {
     "RainTPL": "PHP"
   },
-  "a}{# #": {
-    "RainTPL": "PHP"
-  },
+
   "${ }": {
     "Chameleon": "Python",
     "Evoque": "Python",
