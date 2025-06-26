@@ -133,8 +133,8 @@ async def main(url, injection_point, param_to_attack):
         if symbols in scanned_symbols:
             continue
 
-        # if symbols == "{{ }}":
-            # print("Hi")
+        """if symbols == "@ ":
+            print("Hi")"""
 
         scanned_symbols.add(symbols)
         response, sanitized_payloads = await ssti_attack(success_symbols_lst, success_payloads_lst,

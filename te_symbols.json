@@ -85,6 +85,12 @@
     "Evoque": "Python",
     "Kajiki": "Python"
   },
+  "${% %}": {
+    "Evoque": "Python"
+  },
+  "%}${% ": {
+    "Evoque": "Python"
+  },
   "{${ }}": {
     "RainTPL": "PHP"
   },

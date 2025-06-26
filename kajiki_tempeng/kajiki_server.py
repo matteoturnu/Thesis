@@ -78,8 +78,8 @@ class MyHandler(BaseHTTPRequestHandler):
             code_context_template += "</body></html>"
 
         try:
-            # response = XMLTemplate(plaintext_context_template).render()
-            Tpl = XMLTemplate(code_context_template)
+            Tpl = XMLTemplate(plaintext_context_template)
+            # Tpl = XMLTemplate(code_context_template)
             response = Tpl().render()
             # response = XMLTemplate(code_context_template).render()
         except Exception as e:
