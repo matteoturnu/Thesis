@@ -2,7 +2,7 @@ import os.path
 from pydoc import html
 
 from evoque.template import Template
-
+from evoque.domain import Domain
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
@@ -24,6 +24,8 @@ class MyHandler(BaseHTTPRequestHandler):
         except Exception as e:
             response = f"<h1>Internal server error</h1><p>{str(e)}</p>"
         """
+        legitimate_input = "legitimate_input"
+        a = "a"
         if params.get("title"):
             title = params.get("title")[0]
             message = params.get("message", [""])[0]
@@ -37,8 +39,8 @@ class MyHandler(BaseHTTPRequestHandler):
             link_code_template += "<p>Link1 query1: ${%s}</p>" % message
 
             try:
-                response = Template(domain=domain, name="", src=link_plain_template, from_string=True).evoque({})
-                # response = Template(domain=domain, name="", src=link_code_template, from_string=True).evoque({})
+                # response = Template(domain=domain, name="", src=link_plain_template, from_string=True).evoque({})
+                response = Template(domain=domain, name="", src=link_code_template, from_string=True).evoque(vars())
             except Exception as e:
                 response = f"<h1>Internal server error</h1><p>{str(e)}</p>"
 
@@ -56,8 +58,8 @@ class MyHandler(BaseHTTPRequestHandler):
             link_code_template += "<p>Link2 query1: ${%s}</p>" % clap
 
             try:
-                response = Template(domain=domain, name="", src=link_plain_template, from_string=True).evoque({})
-                # response = Template(domain=domain, name="", src=link_code_template, from_string=True).evoque({})
+                # response = Template(domain=domain, name="", src=link_plain_template, from_string=True).evoque({})
+                response = Template(domain=domain, name="", src=link_code_template, from_string=True).evoque(vars())
             except Exception as e:
                 response = f"<h1>Internal server error</h1><p>{str(e)}</p>"
 
@@ -74,8 +76,8 @@ class MyHandler(BaseHTTPRequestHandler):
             fullnav_btn_code_template += "<p>JSbtn query2: ${%s}</p>" % query2
 
             try:
-                # response = Template(domain=domain, name="", src=fullnav_btn_code_template, from_string=True).evoque({})
-                response = Template(domain=domain, name="", src=fullnav_btn_plain_template, from_string=True).evoque({})
+                response = Template(domain=domain, name="", src=fullnav_btn_code_template, from_string=True).evoque(vars())
+                # response = Template(domain=domain, name="", src=fullnav_btn_plain_template, from_string=True).evoque({})
             except Exception as e:
                 response = f"<h1>Internal server error</h1><p>{str(e)}</p>"
         else:
@@ -134,16 +136,31 @@ class MyHandler(BaseHTTPRequestHandler):
             code_context_template += "<p>Your fav language: ${%s} </p>" % fav_lang
             code_context_template += "<p>Your vehicles: ${%s}, ${%s}, ${%s} </p>" % (vehicle1, vehicle2, vehicle3)
             code_context_template += "<p>Password: ${%s} </p>" % password
-            code_context_template += "<p>E-mail: ${%s} </p>" % email
+            code_context_template += "<p>E-mail: ${'%s'} </p>" % email
             code_context_template += "<p>Search: ${%s} </p>" % search
             code_context_template += "<p>Phone number: ${%s} </p>" % tel
             code_context_template += "<p>Textarea: ${%s} </p>" % textarea
 
+            # exec(f"{name} = '{name}'")
+            legitimate_input = "legitimate_input"
+            a = "a"
+            male = "male"
+            HTML = "HTML"
+            Bike = "Bike"
+            Car = "Car"
+            Boat = "Boat"
+
             print(code_context_template)
+            #print(''.__class__.__base__.__subclasses__())
+            for cls in ''.__class__.__base__.__subclasses__():
+                print(cls)
+            print(''.__class__.__base__.__subclasses__()[-70])
 
         try:
+            # restricted execution mode
+            domain = Domain(os.path.join(os.path.abspath("."), "templates"), restricted=True, errors=4)
             response = Template(domain=domain, name="", src=plaintext_context_template, from_string=True).evoque({})
-            # response = Template(domain=domain, name="", src=code_context_template, from_string=True).evoque({})
+            # response = Template(domain=domain, name="", src=code_context_template, from_string=True).evoque(vars())
 
         except Exception as e:
             response = f"<h1>Internal server error</h1><p>{str(e)}</p>"

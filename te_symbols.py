@@ -1,4 +1,4 @@
-te_symbols = {
+te_symbs = {
     " ": {
         "Any": "Any"    # code context
     },

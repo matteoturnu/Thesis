@@ -40,7 +40,7 @@ async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, 
     else:
         print("FAILED INJECTION.")
         print("\nLooking for exceptions or sanitized payloads...")
-        # print("Response: ", response)
+        print("Response: ", response)
         # process to find if sanitization occurred
         # now inject legitimate data
         default_input = ""
@@ -65,6 +65,7 @@ async def ssti_attack(success_symbols_lst, success_payloads_lst, symbols, page, 
             print("EXCEPTION after INJECTION.\n", response)
             # print("Response after payload injection: ", response)
             return response, []
+
 
         modified_payloads = get_sanitized_payloads(response, expected_response, symbols, operation)
         modified_payloads = [mod for mod in modified_payloads]
@@ -129,12 +130,12 @@ async def main(url, injection_point, param_to_attack):
 
     lang_names_lst = set()
     for symbols in symbols_to_test:
-        # for symbols in ["string:{ }", "{ }"]:
+        # for symbols in ["{{ }}", "{{_self~ }}"]:
         if symbols in scanned_symbols:
             continue
 
-        """if symbols == "@ ":
-            print("Hi")"""
+        if symbols == "{{ }}" or symbols == "{{_self~ }}":
+            print("Hi")
 
         scanned_symbols.add(symbols)
         response, sanitized_payloads = await ssti_attack(success_symbols_lst, success_payloads_lst,
@@ -158,7 +159,7 @@ async def main(url, injection_point, param_to_attack):
 
             for eng_name in eng_names_lst:
                 engines_tested.append(eng_name)
-                eng_symbols = load_symbols_by_engine(eng_name)
+                eng_symbols = load_symbols_by_engine(eng_name, te_symbols)
                 for tags in eng_symbols:
                     if tags not in scanned_symbols:
                         scanned_symbols.add(tags)
@@ -187,7 +188,7 @@ async def main(url, injection_point, param_to_attack):
         print("\nSome successful payloads have been found:\n", success_payloads_lst)
         print(f"Target template engine(s): ")
         # simple_dict, te_dct = find_template_engines(success_symbols_lst)
-        simple_dict, te_dct = find_template_engines(success_symbols_lst, lang_names_lst)
+        simple_dict, te_dct = find_template_engines(success_symbols_lst, te_symbols, lang_names_lst)
         show_engines(simple_dict, te_dct)
     else:
         print("No successful payload has been found.")

@@ -63,7 +63,7 @@
                                 <p>Phone number: $tel </p>
                                 <p>Textarea: $textarea </p>";
             $code_context_template = "<h1>User Profile</h1>
-                                <p>Hello, <?= $name ?> </p>
+                                <p>Hello, <?= \$this->escape($name) ?> </p>
                                 <p>Sex: <?= $sex ?></p>
                                 <p>Your fav language: <?= $fav_lang ?></p>
                                 <p>Your vehicles: <?= $vehicle1 ?>, <?= $vehicle2 ?>, <?= $vehicle3 ?></p>

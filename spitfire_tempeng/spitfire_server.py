@@ -50,8 +50,8 @@ class MyHandler(BaseHTTPRequestHandler):
             link_code_template += "<p>Link1 query1: $%s</p>" % message
 
             with open("spitfire_templates/link_template.spf", "w") as f:
-                # f.write(link_plain_template)
-                f.write(link_code_template)
+                f.write(link_plain_template)
+                # f.write(link_code_template)
 
         elif params.get("greeting"):
             tpl_file = "link_template"
@@ -67,8 +67,8 @@ class MyHandler(BaseHTTPRequestHandler):
             link_code_template += "<p>Link2 query1: $%s</p>" % clap
 
             with open("spitfire_templates/link_template.spf", "w") as f:
-                # f.write(link_plain_template)
-                f.write(link_code_template)
+                f.write(link_plain_template)
+                # f.write(link_code_template)
 
 
         elif params.get("query1"):
@@ -85,8 +85,8 @@ class MyHandler(BaseHTTPRequestHandler):
             fullnav_btn_code_template += "<p>JSbtn query2: $%s</p>" % query2
 
             with open("spitfire_templates/navbutton_template.spf", "w") as f:
-                # f.write(fullnav_btn_plain_template)
-                f.write(fullnav_btn_code_template)
+                f.write(fullnav_btn_plain_template)
+                # f.write(fullnav_btn_code_template)
 
         else:
             tpl_file = "form"
@@ -160,8 +160,8 @@ class MyHandler(BaseHTTPRequestHandler):
             code_context_template += "<p>Textarea: $%s </p>" % textarea
 
             with open("spitfire_templates/welcome.spf", "w") as f:
-                # f.write(plaintext_context_template)
-                f.write(code_context_template)
+                f.write(plaintext_context_template)
+                # f.write(code_context_template)
 
         if params.get("credentials_form"):
             username = params.get("username", [""])[0]  # Default to empty string if missing
@@ -176,8 +176,8 @@ class MyHandler(BaseHTTPRequestHandler):
             code_context_template = "<h1>Welcome, $%s !</h1>" % username
             code_context_template += "<p style=\"font-size:20px;\">Your email is: $%s </p>" % email
             with open("spitfire_templates/welcome.spf", "w") as f:
-                # f.write(plaintext_context_template)
-                f.write(code_context_template)
+                f.write(plaintext_context_template)
+                # f.write(code_context_template)
 
         # Need to keep the server online
 
@@ -198,10 +198,10 @@ class MyHandler(BaseHTTPRequestHandler):
 
 
         # remove files to avoid errors
-        """if os.path.exists("spitfire_templates/welcome.spf"):
+        if os.path.exists("spitfire_templates/welcome.spf"):
             os.remove("spitfire_templates/welcome.spf")
             print("File welcome.spf removed.")
-        """
+
 
 
 
