@@ -190,10 +190,6 @@ def get_sanitized_payloads(new_html, old_html, symbols, operation):
             payload_end = forwards_scan(new_line, payload_end, start_next, delimiter_end, del_start_len, del_end_len)
 
             changed_payload = new_line[payload_start:payload_end]
-            # this is the default input we put in the email field to bypass the constraint
-            if "@a" in changed_payload:
-                continue
-
             if changed_payload:
                 merged_payloads = False
                 if operation not in changed_payload and diffs:
@@ -319,11 +315,11 @@ def edit_url_query(url, new_query_value, target_parameter=None):
     new_url = urlunparse((parsed_url.scheme, parsed_url.netloc, parsed_url.path, parsed_url.params,
                           new_query, parsed_url.fragment))
 
-    # return new_url
+    return new_url
 
     # The row below is needed to test with Craft CMS since it doesn't allow encoded urls
     # but it doesn't work with CVE related to CMS Made Simple with symbols like "#" and so on
-    return urllib.parse.unquote(new_url)
+    # return urllib.parse.unquote(new_url)
 
 
 async def exec_payload_in_link(page, link_elem, payload, url):
@@ -379,7 +375,6 @@ async def exec_payload_in_url(page, param_to_attack, payload, url):
     # page.once("response", one_time_handler)
     page.on("response", filtered_handler)
 
-    print("NEW URL: ", new_url)
     await page.goto(new_url, waitUntil="domcontentloaded")
     html_resp = await capture_response(resp_result, resp_obj)
 

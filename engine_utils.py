@@ -1,6 +1,6 @@
 import re
 import json5
-# from te_symbols import te_symbols
+from te_symbols import te_symbols
 from simple_utils import get_html_diffs
 
 def load_engines(te_dct):
@@ -10,7 +10,7 @@ def load_engines(te_dct):
     return te_lst
 
 
-def load_symbols_by_engine(engine, te_symbols):
+def load_symbols_by_engine(engine):
     eng_symbols = []
     for tags, engines in te_symbols.items():
         if engine in engines:
@@ -34,7 +34,7 @@ def filter_engines_by_language(simple_dict, engines, languages):
 
 
 
-def find_template_engines(success_symbols, te_symbols, lang_names_lst):
+def find_template_engines(success_symbols, lang_names_lst):
     target_engines = {}
     engines_by_symbols = {}
     simple_dict = True

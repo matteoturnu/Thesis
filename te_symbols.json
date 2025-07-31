@@ -88,10 +88,7 @@
   "${% %}": {
     "Evoque": "Python"
   },
-  "1%}${% ": {
-    "Evoque": "Python"
-  },
-  "1}${% %": {
+  "%}${% ": {
     "Evoque": "Python"
   },
   "{${ }}": {
@@ -143,10 +140,6 @@
     "Template7": "JavaScript",
     "Golang": "Default Engine"
   },
-  "{{_self~ }}": {
-    "Twig": "PHP"
-  },
-
   "{{# }}": {
     "Template7": "JavaScript"
   },

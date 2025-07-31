@@ -1,9 +1,6 @@
 <?php
     require '../vendor/autoload.php';
     $latte = new Latte\Engine;
-    use Latte\Engine;
-
-    echo 'Latte Version: ' . Engine::VERSION;
 
     if ($_POST) {
         ///if ($_POST["identity_form"]) {
@@ -67,13 +64,21 @@
                                 <p>Hello, {= $user }</p>
                                 <p>Your nickname is: {= $nickname } </p>";
         }
+        //$name = $_POST["name"];
 
-        $policy = Latte\Sandbox\SecurityPolicy::createSafePolicy();
-        $latte->setPolicy($policy);
-        $latte->setSandboxMode();
+        # if I don't create everytime the template SSTI doesn't work
+        # it would give "undefined variable $name"
+        # vulnerable to SSTI
+
+        //$new_template = "<h1>Welcome, {$name}</h1>";
+        /*
+        $template = $latte->createTemplate();
+        $template->setSource($new_template);  // Set the string as the template source
+        echo $template->renderToString();*/
 
         file_put_contents("templates/template.latte", $plaintext_context_template);
         //file_put_contents("templates/template.latte", $code_context_template);
+        #$params = ['user' => $name];
         $params = [];
 
         $latte->render('templates/template.latte', $params);

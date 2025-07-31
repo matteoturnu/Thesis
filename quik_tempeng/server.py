@@ -134,13 +134,8 @@ class MyHandler(BaseHTTPRequestHandler):
 
             search = html.escape(search)
 
-            #####################
-            #user = {'name': name}
-
-
             plaintext_context_template = "<h1>User Profile</h1>"
             plaintext_context_template += "<p>Hello, %s </p>" % name
-            # plaintext_context_template += "<p>Hello, @user.name </p>"
             plaintext_context_template += "<p>Sex: %s </p>" % sex
             plaintext_context_template += "<p>Your fav language: %s </p>" % fav_lang
             plaintext_context_template += "<p>Your vehicles: %s, %s, %s </p>" % (vehicle1, vehicle2, vehicle3)
@@ -162,7 +157,6 @@ class MyHandler(BaseHTTPRequestHandler):
             code_context_template += "<p>Textarea: @{%s} </p>" % textarea
 
             print(code_context_template)
-            print(locals())
 
         try:
             # response = Template(plaintext_context_template).render(locals())
